@@ -22,6 +22,9 @@ DOCUMENTS_APPROVE = "documents.approve"
 STOCK_READ = "stock.read"
 STOCK_MANAGE = "stock.manage"
 STOCK_POST = "stock.post"
+ACCOUNTING_READ = "accounting.read"
+ACCOUNTING_POST = "accounting.post"
+ACCOUNTING_MANAGE = "accounting.manage"
 
 ROLE_OWNER = "owner"
 

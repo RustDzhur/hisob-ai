@@ -303,3 +303,23 @@ export type StockReservation = {
   id: string; warehouse: NameRef; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string; reason: string | null;
   status: "ACTIVE" | "RELEASED"; created_by_name: string | null; created_at: string; released_at: string | null;
 };
+
+// ---------------- бухгалтерия (срез 5.1) ----------------
+export type Account = {
+  id: string; code: string; name: string; parent_id: string | null; parent_code: string | null; allow_posting: boolean;
+  notes: string | null; archived: boolean; has_entries: boolean; created_at: string; updated_at: string;
+};
+export type AccountingPeriod = { id: string; start_date: string; end_date: string; status: "OPEN" | "CLOSED"; closed_at: string | null; entries_count: number };
+export type JournalLine = { position: number; account_id: string; account_code: string; account_name: string; debit: string; credit: string; memo: string | null };
+export type JournalEntry = {
+  id: string; number: number; entry_date: string; currency: string; description: string; reverses_id: string | null;
+  reversed_by_id: string | null; period_id: string; created_by_name: string | null; created_at: string; total: string; lines: JournalLine[];
+};
+export type JournalEntryItem = { id: string; number: number; entry_date: string; currency: string; description: string; total: string; is_reversal: boolean; reversed: boolean };
+export type TrialRow = {
+  account_id: string; code: string; name: string; opening_debit: string; opening_credit: string; turnover_debit: string;
+  turnover_credit: string; closing_debit: string; closing_credit: string;
+};
+export type TrialBalance = { currency: string; date_from: string; date_to: string; rows: TrialRow[]; totals: TrialRow | null; balanced: boolean };
+export type LedgerRow = { entry_id: string; number: number; entry_date: string; description: string; memo: string | null; debit: string; credit: string; balance_debit: string; balance_credit: string };
+export type Ledger = { account_id: string; code: string; name: string; currency: string; date_from: string; date_to: string; opening_debit: string; opening_credit: string; rows: LedgerRow[]; total: number };

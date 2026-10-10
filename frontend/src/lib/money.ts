@@ -56,3 +56,23 @@ export function quantityDiff(counted: string, expected: string): string | null {
   const frac = abs.slice(-6).replace(/0+$/, "");
   return `${sign}${abs.slice(0, -6)}${frac ? "." + frac : ""}`;
 }
+
+/** Сумма десятичных строк (до 4 знаков) без float: результат в масштабе 1e4. Неразобранные значения пропускаются. */
+export function sumAmounts4(values: string[]): bigint {
+  let total = BigInt(0);
+  for (const raw of values) {
+    const v = normalizeMoneyInput(raw);
+    if (!/^\d+(\.\d{1,4})?$/.test(v)) continue;
+    const [i, f = ""] = v.split(".");
+    total += BigInt(i + f.padEnd(4, "0"));
+  }
+  return total;
+}
+
+/** Число в масштабе 1e4 -> строка без хвостовых нулей. */
+export function formatScaled4(n: bigint): string {
+  const neg = n < BigInt(0);
+  const abs = (neg ? -n : n).toString().padStart(5, "0");
+  const frac = abs.slice(-4).replace(/0+$/, "");
+  return `${neg ? "-" : ""}${abs.slice(0, -4)}${frac ? "." + frac : ""}`;
+}

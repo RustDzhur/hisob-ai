@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, formatQuantity, normalizeMoneyInput, quantityDiff } from "./money";
+import { formatMoney, formatQuantity, formatScaled4, normalizeMoneyInput, quantityDiff, sumAmounts4 } from "./money";
 
 const flat = (s: string) => s.replace(/[\s  ]/g, " ");
 
@@ -58,5 +58,16 @@ describe("quantityDiff", () => {
     expect(quantityDiff("abc", "5")).toBeNull();
     expect(quantityDiff("1.1234567", "5")).toBeNull();
     expect(quantityDiff("-1", "5")).toBeNull();
+  });
+});
+
+describe("sumAmounts4 / formatScaled4", () => {
+  it("точная сумма без float", () => {
+    expect(formatScaled4(sumAmounts4(["0.1", "0.2"]))).toBe("0.3"); // в float было бы 0.30000000000000004
+    expect(formatScaled4(sumAmounts4(["1 250,50", "0.0001"]))).toBe("1250.5001");
+    expect(formatScaled4(sumAmounts4(["9007199254740993", "1"]))).toBe("9007199254740994");
+    expect(formatScaled4(sumAmounts4(["", "abc", "5"]))).toBe("5");
+    expect(formatScaled4(BigInt(0))).toBe("0");
+    expect(formatScaled4(BigInt(-15000))).toBe("-1.5");
   });
 });
