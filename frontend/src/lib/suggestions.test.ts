@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExtractedField } from "./api";
-import { confidenceLevel, lineConfidence, normDecimal, sameValue, suggestionState, valueForForm } from "./suggestions";
+import { normDecimal, sameValue, suggestionState, valueForForm } from "./suggestions";
 
 const hint = (over: Partial<ExtractedField> = {}): ExtractedField => ({
   path: "number", value: "INV-1", confidence: 0.9, evidence: "No INV-1", validation: "ok", applied: false, ...over,
@@ -35,20 +35,9 @@ describe("suggestionState", () => {
 });
 
 describe("прочее", () => {
-  it("уровни уверенности", () => {
-    expect(confidenceLevel(0.95)).toBe("high");
-    expect(confidenceLevel(0.7)).toBe("medium");
-    expect(confidenceLevel(0.3)).toBe("low");
-    expect(confidenceLevel(null)).toBe("unknown");
-  });
   it("значение для формы: валюта в верхнем регистре, суммы нормализованы", () => {
     expect(valueForForm("text", "currency", "uzs")).toBe("UZS");
     expect(valueForForm("decimal", "total_amount", "336.00")).toBe("336");
     expect(valueForForm("date", "date", "2026-10-01")).toBe("2026-10-01");
-  });
-  it("минимальная уверенность по строке", () => {
-    const f = [hint({ path: "lines.1.amount", confidence: 0.9 }), hint({ path: "lines.1.quantity", confidence: 0.5 }), hint({ path: "lines.2.amount", confidence: 0.99 })];
-    expect(lineConfidence(f, 1)).toBe(0.5);
-    expect(lineConfidence(f, 3)).toBeNull();
   });
 });

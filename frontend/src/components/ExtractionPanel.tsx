@@ -5,7 +5,6 @@ import { Banner, Button } from "@/components/ui";
 import { errorText } from "@/i18n/errors";
 import { useFormat, useT } from "@/i18n/LocaleProvider";
 import { api, toApiError, type ApiError as ApiErrorT, type DocumentFull, type Extraction, type MatchCandidate } from "@/lib/api";
-import { confidenceLevel } from "@/lib/suggestions";
 
 export type Suggestion = { path: string; label: string; current: string; value: string; confidence: number | null; evidence: string | null };
 
@@ -99,6 +98,7 @@ export function ExtractionPanel({ orgId, docId, extraction, canRun, suggestions,
         ) : null}
       </div>
       <p className="hint">{t.ai.note}</p>
+      {suggestions.length && editable ? <p className="hint">{t.ai.confNote}</p> : null}
       {canRun && configured === false ? <Banner kind="info">{t.ai.notConfigured}</Banner> : null}
       {err ? <Banner>{errorText(t, err)}</Banner> : null}
 
@@ -143,7 +143,7 @@ export function ExtractionPanel({ orgId, docId, extraction, canRun, suggestions,
                   <strong>{s.label}</strong>:{" "}
                   {s.current ? <><s className="muted">{s.current}</s> → </> : null}
                   <span className="suggest-value">{s.value}</span>{" "}
-                  <span className={`badge conf-${confidenceLevel(s.confidence)}`} title={t.ai.conf}>{confText(s.confidence)}</span>
+                  <span className="badge badge-muted" title={t.ai.confNote} aria-label={`${t.ai.conf}: ${confText(s.confidence)}`}>{confText(s.confidence)}</span>
                   {s.evidence ? <div className="hint">{t.ai.evidence}: «{s.evidence}»</div> : null}
                 </div>
                 <Button variant="secondary" className="btn-sm" onClick={() => { onApply([s]); setAppliedMsg(false); }}>{t.ai.apply}</Button>

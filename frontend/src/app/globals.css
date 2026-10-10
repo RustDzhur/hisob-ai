@@ -241,6 +241,3 @@ textarea { width: 100%; padding: 8px 12px; font: inherit; color: var(--text); ba
 .suggest-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .suggest { display: flex; gap: 8px; justify-content: space-between; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
 .suggest-value { font-weight: 600; }
-.conf-high { background: #e6f6f0; color: #0b6b4e; }
-.conf-medium { background: #fdf3dc; color: #8a5a00; }
-.conf-low, .conf-unknown { background: var(--danger-bg); color: var(--danger-text); }

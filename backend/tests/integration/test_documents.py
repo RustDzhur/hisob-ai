@@ -713,3 +713,36 @@ def test_jpeg_and_png_both_accepted(new_client: NewClient) -> None:
         ).status_code
         == 201
     )
+
+
+def test_duplicate_number_ignores_cyrillic_latin_lookalikes(new_client: NewClient) -> None:
+    owner, org = setup_org(new_client)
+    cp = new_counterparty(owner, org)
+    first = upload_doc(owner, org, pdf("h1")).json()["id"]
+    second = upload_doc(owner, org, pdf("h2")).json()["id"]
+    patch(owner, org, first, **valid_fields(cp, number="ТН-88"))  # кириллица
+    d = patch(owner, org, second, **valid_fields(cp, number="TH-88")).json()  # латиница
+    assert issue_codes(d)["possible_duplicate"] == "warning"
+    # разные номера по-прежнему не дубликаты
+    third = upload_doc(owner, org, pdf("h3")).json()["id"]
+    assert "possible_duplicate" not in issue_codes(
+        patch(owner, org, third, **valid_fields(cp, number="TH-89")).json()
+    )
+
+
+def test_counterparty_tin_length_warning(new_client: NewClient) -> None:
+    owner, org = setup_org(new_client)
+    odd = new_counterparty(owner, org, name="ООО Странный", tin="3000000111")  # 10 знаков
+    ok14 = new_counterparty(owner, org, name="ИП Физлицо", tin="12345678901234")  # 14 знаков
+    d1 = upload_doc(owner, org, pdf("t1")).json()["id"]
+    d2 = upload_doc(owner, org, pdf("t2")).json()["id"]
+    bad = patch(owner, org, d1, **valid_fields(odd, number="A1")).json()
+    assert issue_codes(bad)["counterparty_tin_length"] == "warning"
+    w = next(i for i in bad["issues"] if i["code"] == "counterparty_tin_length")
+    assert w["params"] == {"length": 10}
+    assert "counterparty_tin_length" not in issue_codes(
+        patch(owner, org, d2, **valid_fields(ok14, number="A2")).json()
+    )
+    # предупреждение подтверждается при утверждении, а не блокирует
+    r = act(owner, org, d1, "approve", acknowledged=["counterparty_tin_length"])
+    assert r.status_code == 200, r.text

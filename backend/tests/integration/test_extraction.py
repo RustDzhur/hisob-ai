@@ -727,3 +727,16 @@ def test_provider_changed_after_enqueue_is_refused(
     d = get(owner, org, did)
     assert d["extraction"]["job"]["error_code"] == "provider_changed" and other.calls == []
     set_runtime(admin_engine)
+
+
+def test_ai_tin_of_unusual_length_is_flagged_and_not_used_for_matching(
+    new_client: NewClient, mock_ai: MockFactory
+) -> None:
+    owner, org = make_org(new_client)
+    counterparty(owner, org, "ООО Поставщик Альфа", "300000111")
+    mock_ai(good_payload(seller_tin="3000000111", seller_name="Другое Название"))  # лишняя цифра
+    did = new_doc(owner, org, data=png_bytes(color="red"), name="t.png")
+    d = extract(owner, org, did)
+    f = fields(d)["seller_tin"]
+    assert f["validation"] == "invalid" and f["applied"] is False
+    assert d["counterparty"] is None  # по ошибочному ИНН контрагент не подставлен

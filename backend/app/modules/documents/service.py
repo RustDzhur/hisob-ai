@@ -36,6 +36,12 @@ from app.platform.base import new_id, utcnow
 from app.platform.errors import AppError
 from app.platform.listing import ListQuery, Page, like_pattern, paginate
 from app.platform.storage import get_storage
+from app.platform.validators import (
+    CONFUSABLE_FROM,
+    CONFUSABLE_TO,
+    fold_confusables,
+    tin_length_usual,
+)
 
 EDITABLE_STATUS = "NEEDS_REVIEW"
 SORTABLE: dict[str, SQLColumnExpression[Any]] = {
@@ -203,6 +209,15 @@ def _db_issues(
             out.append(validation.Issue("counterparty_archived", "error", "counterparty_id"))
         if not cp.tin:
             out.append(validation.Issue("counterparty_tin_missing", "warning", "counterparty_id"))
+        elif not tin_length_usual(cp.tin):
+            out.append(
+                validation.Issue(
+                    "counterparty_tin_length",
+                    "warning",
+                    "counterparty_id",
+                    {"length": len(cp.tin)},
+                )
+            )
         if doc.number:
             dups = db.scalars(
                 select(Document.id)
@@ -210,7 +225,10 @@ def _db_issues(
                     Document.organization_id == org_id,
                     Document.id != doc.id,
                     Document.counterparty_id == cp.id,
-                    func.lower(func.btrim(Document.number)) == doc.number.strip().lower(),
+                    func.translate(
+                        func.lower(func.btrim(Document.number)), CONFUSABLE_FROM, CONFUSABLE_TO
+                    )
+                    == fold_confusables(doc.number),
                     Document.status.notin_(("REJECTED", "ARCHIVED", "DUPLICATE")),
                 )
                 .limit(3)

@@ -17,6 +17,7 @@ from app.modules.documents.extraction.schema import ExtractionOut, FieldOut
 from app.modules.documents.models import DOC_TYPES, AIJob, Document, DocumentLine, ExtractedField
 from app.modules.tenancy.models import Currency, Organization, OrganizationCurrency
 from app.platform.base import new_id
+from app.platform.validators import tin_length_usual
 
 QTY_DECIMALS = 6
 PRICE_DECIMALS = 4
@@ -136,15 +137,20 @@ def apply_extraction(
         record(path, f, "ok" if valid else "invalid", use)
 
     # --- стороны и сопоставление контрагента ---
-    seller = matching.Party(out.seller_name.value, digits_only(out.seller_tin.value))
-    buyer = matching.Party(out.buyer_name.value, digits_only(out.buyer_tin.value))
+    # ИНН необычной длины (не 9/14 знаков) — вероятная ошибка чтения: не используем для сопоставления
+    # и показываем как не прошедший проверку.
+    s_tin, b_tin = digits_only(out.seller_tin.value), digits_only(out.buyer_tin.value)
+    seller = matching.Party(out.seller_name.value, s_tin if tin_length_usual(s_tin) else None)
+    buyer = matching.Party(out.buyer_name.value, b_tin if tin_length_usual(b_tin) else None)
     for path, f in (
         ("seller_name", out.seller_name),
         ("seller_tin", out.seller_tin),
         ("buyer_name", out.buyer_name),
         ("buyer_tin", out.buyer_tin),
     ):
-        record(path, f, "ok", False)
+        is_tin = path.endswith("_tin")
+        bad = is_tin and f.value is not None and not tin_length_usual(digits_only(f.value))
+        record(path, f, "invalid" if bad else "ok", False)
     org = db.get(Organization, org_id)
     apply_cp, cp_candidates = matching.match_counterparty(
         db, org_id, org.tin if org else None, seller, buyer

@@ -1,7 +1,6 @@
 import type { ExtractedField } from "@/lib/api";
 
 export type Kind = "text" | "decimal" | "date";
-export type Level = "high" | "medium" | "low" | "unknown";
 
 /** Десятичное число из строки без перехода к float: пробелы убираются, запятая -> точка, хвостовые нули срезаются. */
 export function normDecimal(s: string): string {
@@ -18,13 +17,6 @@ export function sameValue(kind: Kind, a: string, b: string): boolean {
   return a.trim() === b.trim();
 }
 
-export function confidenceLevel(c: number | null): Level {
-  if (c === null) return "unknown";
-  if (c >= 0.85) return "high";
-  if (c >= 0.6) return "medium";
-  return "low";
-}
-
 export type SuggestionState = "none" | "same" | "differs" | "invalid";
 
 /** Как показать подсказку AI рядом с полем формы. */
@@ -39,11 +31,4 @@ export function suggestionState(current: string, hint: ExtractedField | undefine
 export function valueForForm(kind: Kind, path: string, value: string): string {
   if (path === "currency") return value.trim().toUpperCase();
   return kind === "decimal" ? normDecimal(value) : value;
-}
-
-/** Минимальная уверенность по полям строки (для компактного индикатора), null если полей нет. */
-export function lineConfidence(fields: ExtractedField[], position: number): number | null {
-  const prefix = `lines.${position}.`;
-  const vals = fields.filter((f) => f.path.startsWith(prefix) && f.confidence !== null).map((f) => f.confidence as number);
-  return vals.length ? Math.min(...vals) : null;
 }
