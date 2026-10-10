@@ -1,7 +1,9 @@
 import base64
 import io
 import json
+import os
 import zipfile
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
@@ -327,3 +329,79 @@ def test_inputs_never_contain_secrets_in_text_input() -> None:
     inp = ProviderInput("text", "text/plain", "a.csv", text="x")
     body = openai(oa_ok).build_body(inp)
     assert KEY not in json.dumps(body)
+
+
+# ---------- выбор основного и запасного ----------
+
+
+def _settings(monkeypatch: pytest.MonkeyPatch, **env: str) -> None:
+    from app.platform.config import get_settings
+
+    for k in (
+        "AI_PROVIDER",
+        "AI_FALLBACK_PROVIDER",
+        "OPENAI_API_KEY",
+        "OPENAI_MODEL",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_MODEL",
+    ):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv(
+        "DATABASE_URL", os.environ.get("DATABASE_URL", "postgresql+psycopg://u:p@h/db")
+    )
+    for k, v in env.items():
+        monkeypatch.setenv(k, v)
+    get_settings.cache_clear()
+
+
+def test_primary_openai_fallback_deepseek(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.modules.documents.extraction.providers import get_fallback_provider, get_provider
+
+    _settings(
+        monkeypatch,
+        AI_PROVIDER="openai",
+        AI_FALLBACK_PROVIDER="deepseek",
+        OPENAI_API_KEY="k1",
+        OPENAI_MODEL="m1",
+        DEEPSEEK_API_KEY="k2",
+        DEEPSEEK_MODEL="m2",
+    )
+    primary = get_provider()
+    fb = get_fallback_provider(primary)
+    assert primary.name == "openai" and fb is not None and fb.name == "deepseek"
+
+
+def test_unconfigured_primary_falls_back_and_no_self_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.modules.documents.extraction.providers import get_fallback_provider, get_provider
+
+    _settings(
+        monkeypatch,
+        AI_PROVIDER="openai",
+        AI_FALLBACK_PROVIDER="deepseek",
+        DEEPSEEK_API_KEY="k2",
+        DEEPSEEK_MODEL="m2",
+    )
+    assert get_provider().name == "deepseek"  # основной не настроен — работает запасной
+    _settings(monkeypatch, AI_PROVIDER="openai", AI_FALLBACK_PROVIDER="openai", OPENAI_API_KEY="k")
+    assert get_fallback_provider(get_provider()) is None
+    _settings(monkeypatch, AI_PROVIDER="openai", OPENAI_API_KEY="k", OPENAI_MODEL="m")
+    assert get_fallback_provider(get_provider()) is None  # запасной не задан
+    _settings(
+        monkeypatch,
+        AI_PROVIDER="openai",
+        AI_FALLBACK_PROVIDER="deepseek",
+        OPENAI_API_KEY="k",
+        OPENAI_MODEL="m",
+    )
+    assert get_fallback_provider(get_provider()) is None  # запасной не настроен
+    _settings(monkeypatch)
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings() -> Iterator[None]:
+    yield
+    from app.platform.config import get_settings
+
+    get_settings.cache_clear()

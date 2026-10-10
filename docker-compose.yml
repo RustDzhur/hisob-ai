@@ -59,6 +59,7 @@ services:
       <<: *backend-env
       REDIS_URL: redis://redis:6379/0
       AI_PROVIDER: ${AI_PROVIDER:-openai}
+      AI_FALLBACK_PROVIDER: ${AI_FALLBACK_PROVIDER:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}

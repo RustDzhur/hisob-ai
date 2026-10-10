@@ -287,29 +287,62 @@ class MockProvider:
 
 
 _override: ExtractionProvider | None = None
+_fallback_override: ExtractionProvider | None = None
+_NO_FALLBACK = object()
 
 
-def set_provider_for_tests(provider: ExtractionProvider | None) -> None:
-    global _override
+def set_provider_for_tests(
+    provider: ExtractionProvider | None, fallback: ExtractionProvider | None = None
+) -> None:
+    global _override, _fallback_override
     _override = provider
+    _fallback_override = fallback
 
 
-def get_provider() -> ExtractionProvider:
-    if _override is not None:
-        return _override
+def _build(name: str) -> ExtractionProvider:
     s = get_settings()
-    if s.ai_provider == "openai":
+    if name == "openai":
         return OpenAIProvider(
             api_key=s.openai_api_key,
             model=s.openai_model,
             base_url=s.openai_base_url,
             timeout=s.ai_timeout_seconds,
         )
-    if s.ai_provider == "deepseek":
+    if name == "deepseek":
         return DeepSeekProvider(
             api_key=s.deepseek_api_key,
             model=s.deepseek_model,
             base_url=s.deepseek_base_url,
             timeout=s.ai_timeout_seconds,
         )
-    raise ProviderError("provider_not_configured", f"Неизвестный провайдер: {s.ai_provider!r}.")
+    raise ProviderError("provider_not_configured", f"Неизвестный провайдер: {name!r}.")
+
+
+def get_provider() -> ExtractionProvider:
+    """Основной провайдер. Если он не настроен, а запасной настроен — работает запасной."""
+    if _override is not None:
+        return _override
+    s = get_settings()
+    primary = _build(s.ai_provider)
+    if not primary.configured():
+        fb = get_fallback_provider(primary)
+        if fb is not None:
+            return fb
+    return primary
+
+
+def get_fallback_provider(primary: ExtractionProvider | None = None) -> ExtractionProvider | None:
+    """Запасной провайдер: настроен и отличается от основного; иначе None."""
+    if _override is not None:
+        return _fallback_override
+    s = get_settings()
+    name = s.ai_fallback_provider.strip().lower()
+    if not name or name == s.ai_provider:
+        return None
+    try:
+        fb = _build(name)
+    except ProviderError:
+        return None
+    if primary is not None and primary.name == fb.name:
+        return None
+    return fb if fb.configured() else None

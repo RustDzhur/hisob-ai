@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     redis_url: str | None = None
 
     # Распознавание документов. Ключи есть только у воркера; mock — только для тестов и помечается в UI.
+    ai_fallback_provider: str = ""  # запасной провайдер (пусто — без запасного)
     ai_provider: str = "openai"  # openai | deepseek | mock
     openai_api_key: str = ""
     openai_model: str = ""

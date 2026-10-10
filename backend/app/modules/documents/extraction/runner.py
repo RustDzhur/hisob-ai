@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from app.modules.audit import service as audit
 from app.modules.documents.extraction import apply, inputs
-from app.modules.documents.extraction.providers import ProviderError, get_provider
+from app.modules.documents.extraction.providers import (
+    ProviderError,
+    get_fallback_provider,
+    get_provider,
+)
 from app.modules.documents.extraction.schema import ExtractionOut
 from app.modules.documents.models import (
     AIJob,
@@ -62,6 +66,25 @@ def _fail(db: Session, job: AIJob, doc: Document | None, code: str, message: str
     db.commit()
 
 
+# Коды отказа основного провайдера, при которых пробуем запасной. Ошибки файла и схемы не в списке.
+FALLBACK_CODES = frozenset(
+    {
+        "provider_not_configured",
+        "provider_auth",
+        "provider_model_unavailable",
+        "provider_bad_request",
+        "provider_rate_limited",
+        "provider_unavailable",
+        "provider_timeout",
+        "provider_invalid_response",
+        "provider_empty_output",
+        "provider_incomplete",
+        "provider_refusal",
+        "invalid_provider_output",
+    }
+)
+
+
 def run_job(job_id: uuid.UUID, org_id: uuid.UUID, *, final_attempt: bool = True) -> None:
     """Идемпотентно: повторный вызов для завершённой/отменённой задачи ничего не делает."""
     with get_sessionmaker()() as db:
@@ -89,13 +112,37 @@ def run_job(job_id: uuid.UUID, org_id: uuid.UUID, *, final_attempt: bool = True)
     # --- вызов провайдера: без открытых транзакций БД ---
     error: tuple[str, str, bool] | None = None
     result = None
+    used: tuple[str, str, str, str] | None = None  # (запасной, модель, основной, код отказа)
     try:
         data = b"".join(get_storage().stream(storage_key))
         inp = inputs.build_input(content_type, data, name)
         provider = get_provider()
         if provider.name != provider_name:
             raise ProviderError("provider_changed", "Провайдер изменился после постановки задачи.")
-        result = provider.extract(inp)
+        try:
+            result = provider.extract(inp)
+        except ProviderError as primary_exc:
+            fb = get_fallback_provider(provider)
+            if fb is None or primary_exc.code not in FALLBACK_CODES:
+                raise
+            log.warning(
+                "primary provider failed job=%s code=%s, trying %s",
+                job_id_s,
+                primary_exc.code,
+                fb.name,
+            )
+            try:
+                result = fb.extract(inp)
+            except ProviderError as fb_exc:
+                log.warning("fallback failed job=%s code=%s", job_id_s, fb_exc.code)
+                if fb_exc.code == "provider_unsupported_input":
+                    raise primary_exc from None
+                raise ProviderError(
+                    primary_exc.code,
+                    f"{primary_exc.message} Запасной провайдер ({fb.name}): {fb_exc.code}.",
+                    retryable=primary_exc.retryable or fb_exc.retryable,
+                ) from None
+            used = (fb.name, fb.model, provider.name, primary_exc.code)
     except inputs.InputError as exc:
         error = (
             str(exc) or "input_unreadable",
@@ -146,6 +193,8 @@ def run_job(job_id: uuid.UUID, org_id: uuid.UUID, *, final_attempt: bool = True)
                 job_id=job.id, organization_id=org_id, raw_output=result.payload, matches=matches
             )
         )
+        if used is not None:
+            job.provider, job.model = used[0], used[1]
         job.status, job.finished_at = "succeeded", utcnow()
         job.tokens_in, job.tokens_out = result.tokens_in, result.tokens_out
         if _doc_in_work(doc):
@@ -165,6 +214,7 @@ def run_job(job_id: uuid.UUID, org_id: uuid.UUID, *, final_attempt: bool = True)
                 "applied_fields": summary.applied,
                 "suggested_fields": summary.suggested,
                 "lines_created": summary.lines_created,
+                **({"fallback_from": used[2], "primary_error": used[3]} if used else {}),
                 "tokens_in": result.tokens_in,
                 "tokens_out": result.tokens_out,
             },
