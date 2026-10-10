@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.modules.audit import service as audit
+from app.modules.catalog import products
 from app.modules.catalog.models import UnitOfMeasure
 from app.modules.catalog.schemas import UnitCreate, UnitOut, UnitUpdate
 from app.modules.identity.service import Principal
@@ -115,6 +116,22 @@ def update_unit(
     # Блокировка только для своей строки: SELECT ... FOR UPDATE подчиняется политике UPDATE.
     db.refresh(unit, with_for_update=True)
 
+    if data.is_active is False and unit.is_active:
+        in_use = products.count_active_by_unit(db, org_id, unit.id)
+        if in_use:
+            raise AppError(
+                409,
+                "unit_in_use",
+                "Единица используется в товарах.",
+                [
+                    {
+                        "field": "is_active",
+                        "code": "unit_in_use",
+                        "message": "Единица используется.",
+                        "params": {"count": in_use},
+                    }
+                ],
+            )
     before = _snapshot(unit)
     for field in data.model_fields_set:
         value = getattr(data, field)

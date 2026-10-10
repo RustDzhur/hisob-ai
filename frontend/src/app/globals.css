@@ -191,3 +191,6 @@ textarea { width: 100%; padding: 8px 12px; font: inherit; color: var(--text); ba
 .mobile-sort { display: none; gap: 8px; margin-bottom: 12px; }
 .mobile-sort select { min-height: 40px; padding: 0 8px; font: inherit; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); flex: 1; }
 @media (max-width: 767px) { .mobile-sort { display: flex; } }
+
+.price-row { display: grid; grid-template-columns: 1fr 140px; gap: 12px; align-items: start; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }

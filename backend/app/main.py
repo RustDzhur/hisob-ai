@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.modules.catalog.counterparties_router import router as counterparties_router
+from app.modules.catalog.products_router import router as products_router
+from app.modules.catalog.router import currencies_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.identity.router import router as auth_router
 from app.modules.rbac.router import router as roles_router
@@ -48,7 +50,9 @@ def create_app() -> FastAPI:
     api.include_router(auth_router)
     api.include_router(org_router)
     api.include_router(catalog_router)
+    api.include_router(currencies_router)
     api.include_router(counterparties_router)
+    api.include_router(products_router)
     api.include_router(invitations_router)
     api.include_router(roles_router)
     app.include_router(api)

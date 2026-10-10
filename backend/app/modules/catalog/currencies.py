@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.audit import service as audit
+from app.modules.catalog import products
 from app.modules.identity.service import Principal
 from app.modules.rbac import service as rbac
 from app.modules.tenancy.access import authorize
@@ -61,6 +62,22 @@ def set_enabled(
     )
     if row is not None and row.is_base and not enabled:
         raise AppError(409, "base_currency_locked", "Базовую валюту отключить нельзя.")
+    if not enabled and row is not None and row.enabled:
+        in_use = products.count_active_by_currency(db, org_id, code)
+        if in_use:
+            raise AppError(
+                409,
+                "currency_in_use",
+                "Валюта используется в ценах товаров.",
+                [
+                    {
+                        "field": "code",
+                        "code": "currency_in_use",
+                        "message": "Валюта используется.",
+                        "params": {"count": in_use},
+                    }
+                ],
+            )
     was_enabled = bool(row and row.enabled)
     if was_enabled == enabled:
         return _list(db, org_id)  # без изменений — без записи в аудит

@@ -45,6 +45,21 @@ _PYDANTIC_CODES = {
     "string_too_short": "too_short",
     "string_too_long": "too_long",
     "string_pattern_mismatch": "invalid",
+    "greater_than_equal": "must_be_non_negative",
+    "decimal_max_places": "too_many_decimals",
+    "decimal_max_digits": "too_large",
+    "decimal_parsing": "number_invalid",
+    "decimal_type": "number_invalid",
+    "uuid_parsing": "invalid",
+    "literal_error": "invalid",
+}
+
+
+# Ошибки уровня модели (без поля) привязываем к полю формы по коду.
+_FIELD_BY_CODE = {
+    "price_currency_required": "price_currency",
+    "price_required": "price_currency",
+    "unit_name_required": "name_uz",
 }
 
 
@@ -71,7 +86,8 @@ def install_error_handlers(app: FastAPI) -> None:
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
         details = [
             {
-                "field": ".".join(str(p) for p in e["loc"] if p != "body"),
+                "field": ".".join(str(p) for p in e["loc"] if p != "body")
+                or _FIELD_BY_CODE.get(_detail_code(e), ""),
                 "code": _detail_code(e),
                 "message": e["msg"],
             }

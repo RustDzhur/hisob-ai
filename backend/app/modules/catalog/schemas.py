@@ -1,10 +1,18 @@
 import re
 import uuid
 from datetime import datetime
-from typing import Annotated
+from decimal import Decimal
+from typing import Annotated, Any, Literal
 
 from email_validator import EmailNotValidError, validate_email
-from pydantic import AfterValidator, BaseModel, StringConstraints, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    Field,
+    StringConstraints,
+    model_validator,
+)
 
 from app.platform.validators import validate_tin
 
@@ -143,6 +151,121 @@ class CounterpartyOut(BaseModel):
     phone: str | None
     email: str | None
     notes: str | None
+    archived: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---------- товары и услуги ----------
+
+_BARCODE_RE = re.compile(r"^[0-9A-Za-z._-]{4,32}$")
+
+
+def _barcode(v: str) -> str:
+    if not _BARCODE_RE.match(v):
+        raise ValueError("barcode_invalid")
+    return v
+
+
+def _no_float(v: Any) -> Any:
+    """Деньги не принимаются как float (двоичная погрешность): только строка или целое."""
+    if isinstance(v, float):
+        raise ValueError("price_invalid")
+    return v
+
+
+def _fits_numeric(v: Decimal) -> Decimal:
+    """NUMERIC(20,4) хранит до 16 цифр целой части; больше — ошибка валидации, а не 500."""
+    if v >= Decimal(10) ** 16:
+        raise ValueError("too_large")
+    return v
+
+
+Barcode = Annotated[str, StringConstraints(strip_whitespace=True), AfterValidator(_barcode)]
+Money = Annotated[
+    Decimal,
+    BeforeValidator(_no_float),
+    Field(ge=0, max_digits=20, decimal_places=4, allow_inf_nan=False),
+    AfterValidator(_fits_numeric),
+]
+Sku = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+CurrencyCode = Annotated[
+    str, StringConstraints(strip_whitespace=True, to_upper=True, min_length=3, max_length=3)
+]
+Ikpu = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=50),
+    AfterValidator(_blank_to_none),
+]
+Description = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=2000),
+    AfterValidator(_blank_to_none),
+]
+
+
+def _unique_barcodes(values: list[str] | None) -> list[str] | None:
+    if values is not None and len({v.lower() for v in values}) != len(values):
+        raise ValueError("barcodes_duplicate")
+    return values
+
+
+Barcodes = Annotated[list[Barcode], Field(max_length=20), AfterValidator(_unique_barcodes)]
+
+
+class ProductCreate(BaseModel):
+    kind: Literal["goods", "service"]
+    sku: Sku
+    name: Text200
+    unit_id: uuid.UUID
+    price: Money | None = None
+    price_currency: CurrencyCode | None = None
+    ikpu: Ikpu = None
+    description: Description = None
+    barcodes: Barcodes = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _price_pair(self) -> "ProductCreate":
+        if self.price is not None and self.price_currency is None:
+            raise ValueError("price_currency_required")
+        if self.price is None and self.price_currency is not None:
+            raise ValueError("price_required")
+        return self
+
+
+class ProductUpdate(BaseModel):
+    """Частичное обновление. Цена и валюта меняются вместе (оба поля или оба null)."""
+
+    kind: Literal["goods", "service"] | None = None
+    sku: Sku | None = None
+    name: Text200 | None = None
+    unit_id: uuid.UUID | None = None
+    price: Money | None = None
+    price_currency: CurrencyCode | None = None
+    ikpu: Ikpu = None
+    description: Description = None
+    barcodes: Barcodes | None = None
+
+
+class ProductUnit(BaseModel):
+    id: uuid.UUID
+    code: str
+    name_uz: str | None
+    name_ru: str | None
+    name_en: str | None
+
+
+class ProductOut(BaseModel):
+    id: uuid.UUID
+    kind: str
+    sku: str
+    name: str
+    unit: ProductUnit
+    price: str | None  # точная строка с числом знаков валюты, не float
+    price_currency: str | None
+    ikpu: str | None
+    description: str | None
+    barcodes: list[str]
     archived: bool
     created_at: datetime
     updated_at: datetime

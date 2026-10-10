@@ -1,12 +1,13 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 
-from app.modules.catalog import units
+from app.modules.catalog import currencies, units
 from app.modules.catalog.schemas import UnitCreate, UnitOut, UnitUpdate
 from app.modules.identity.deps import CurrentPrincipal
+from app.modules.tenancy.schemas import CurrencyOut, CurrencyToggle
 from app.platform.csrf import require_csrf
 from app.platform.db import get_db
 
@@ -37,3 +38,25 @@ def update_unit(
     db: DbSession,
 ) -> UnitOut:
     return units.update_unit(db, principal, org_id, unit_id, body)
+
+
+currencies_router = APIRouter(prefix="/organizations/{org_id}/currencies", tags=["catalog"])
+
+
+@currencies_router.get("", response_model=list[CurrencyOut])
+def list_currencies(
+    org_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession
+) -> list[CurrencyOut]:
+    return currencies.list_currencies(db, principal, org_id)
+
+
+@currencies_router.put("/{code}", response_model=list[CurrencyOut])
+def set_currency(
+    org_id: uuid.UUID,
+    code: Annotated[str, Path(min_length=3, max_length=3)],
+    body: CurrencyToggle,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> list[CurrencyOut]:
+    return currencies.set_enabled(db, principal, org_id, code, body.enabled)

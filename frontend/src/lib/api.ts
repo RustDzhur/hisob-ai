@@ -148,3 +148,19 @@ export type Counterparty = {
   created_at: string;
   updated_at: string;
 };
+
+export type Product = {
+  id: string;
+  kind: "goods" | "service";
+  sku: string;
+  name: string;
+  unit: { id: string; code: string; name_uz: string | null; name_ru: string | null; name_en: string | null };
+  price: string | null;
+  price_currency: string | null;
+  ikpu: string | null;
+  description: string | null;
+  barcodes: string[];
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
