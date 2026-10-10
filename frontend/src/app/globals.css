@@ -241,3 +241,10 @@ textarea { width: 100%; padding: 8px 12px; font: inherit; color: var(--text); ba
 .suggest-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
 .suggest { display: flex; gap: 8px; justify-content: space-between; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; overflow-wrap: anywhere; }
 .suggest-value { font-weight: 600; }
+
+/* --- склад (срез 4.1) --- */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tabs a { padding: 8px 14px; text-decoration: none; color: var(--text-muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--primary, #1d4ed8); font-weight: 600; }
+.qty-neg { color: var(--danger-text); }
+.qty-pos { color: #0b6b4e; }

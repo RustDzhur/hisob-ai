@@ -66,6 +66,9 @@ def test_invite_preview_accept_flow(new_client: NewClient, admin_engine: Engine)
         "documents.upload",
         "members.read",
         "org.read",
+        "stock.manage",
+        "stock.post",
+        "stock.read",
         "warehouses.read",
     ]
     assert [o["id"] for o in invitee.get("/api/v1/organizations").json()] == [org]

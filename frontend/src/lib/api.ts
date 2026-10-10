@@ -263,3 +263,26 @@ export type Extraction = {
   line_matches: Record<string, MatchCandidate[]>;
 };
 export type AIStatus = { configured: boolean; provider: string | null; model: string | null; mock: boolean };
+
+// ---------------- склад (срез 4.1) ----------------
+export type NameRef = { id: string; name: string };
+export type UnitRef = { code: string; name_uz: string | null; name_ru: string | null; name_en: string | null };
+export type StockBalance = { warehouse: NameRef; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string };
+export type StockMovement = {
+  id: string; operation_id: string; kind: string; reference: string | null; warehouse: NameRef; product_id: string;
+  sku: string; name: string; unit: UnitRef; quantity_delta: string; op_date: string; occurred_at: string;
+};
+export type StockLine = { position: number; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string };
+export type StockOperation = {
+  id: string; kind: "receipt" | "issue" | "transfer"; status: "DRAFT" | "POSTED"; op_date: string; warehouse: NameRef;
+  to_warehouse: NameRef | null; reference: string | null; notes: string | null; version: number; lines: StockLine[];
+  created_by_name: string | null; posted_by_name: string | null; posted_at: string | null; created_at: string; updated_at: string;
+};
+export type StockOperationItem = {
+  id: string; kind: string; status: string; op_date: string; warehouse_name: string; to_warehouse_name: string | null;
+  reference: string | null; lines_count: number; created_at: string;
+};
+export type Reconciliation = {
+  ok: boolean; checked_pairs: number;
+  mismatches: { warehouse: NameRef; product_id: string; sku: string; name: string; balance: string; movements_sum: string }[];
+};

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoney, normalizeMoneyInput } from "./money";
+import { formatMoney, formatQuantity, normalizeMoneyInput } from "./money";
 
 const flat = (s: string) => s.replace(/[\s  ]/g, " ");
 
@@ -30,5 +30,15 @@ describe("normalizeMoneyInput", () => {
   it("принимает запятую и пробелы", () => {
     expect(normalizeMoneyInput("1 500,5")).toBe("1500.5");
     expect(normalizeMoneyInput(" 12.50 ")).toBe("12.50");
+  });
+});
+
+describe("formatQuantity", () => {
+  it("группирует и подставляет разделитель локали без потери знаков", () => {
+    expect(flat(formatQuantity("1234567.123456", "ru"))).toBe("1 234 567,123456");
+    expect(formatQuantity("1234.5", "en")).toBe("1,234.5");
+    expect(flat(formatQuantity("-1000", "uz"))).toBe("-1 000");
+    expect(formatQuantity("9007199254740993.000001", "en")).toBe("9,007,199,254,740,993.000001"); // больше 2^53
+    expect(formatQuantity("abc", "ru")).toBe("abc");
   });
 });

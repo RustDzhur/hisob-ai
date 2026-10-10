@@ -1,4 +1,5 @@
 import re
+from decimal import Decimal, InvalidOperation
 
 _TIN_RE = re.compile(r"^\d{9,14}$")
 
@@ -34,3 +35,23 @@ CONFUSABLE_TO = "abekmhopctyx"
 def fold_confusables(v: str) -> str:
     """Для СРАВНЕНИЯ номеров: нижний регистр, пробелы по краям убраны, кириллические двойники -> латиница."""
     return v.strip().lower().translate(_CONFUSABLES)
+
+
+_PLAIN_DECIMAL = re.compile(r"^-?[0-9]+(\.[0-9]+)?$")
+
+
+def reject_non_plain_number(v: object, code: str) -> object:
+    """Числа в API — обычные десятичные записи: без float и без форм, которые Decimal понимает, а бухгалтер нет
+    («1e3», «+1», «.5», «Infinity»). Мусор вроде «abc» пропускается дальше: его разберёт pydantic.
+
+    Целые (int) допустимы; значение проверяется до разбора Decimal.
+    """
+    if isinstance(v, float):
+        raise ValueError(code)
+    if isinstance(v, str) and not _PLAIN_DECIMAL.match(v.strip()):
+        try:
+            Decimal(v.strip())
+        except InvalidOperation:
+            return v
+        raise ValueError(code)
+    return v

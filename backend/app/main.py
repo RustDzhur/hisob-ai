@@ -11,6 +11,7 @@ from app.modules.catalog.router import router as catalog_router
 from app.modules.documents.router import router as documents_router
 from app.modules.identity.router import router as auth_router
 from app.modules.inventory.router import router as warehouses_router
+from app.modules.inventory.stock_router import router as stock_router
 from app.modules.rbac.router import router as roles_router
 from app.modules.tenancy.router import invitations_router
 from app.modules.tenancy.router import router as org_router
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     api.include_router(counterparties_router)
     api.include_router(products_router)
     api.include_router(warehouses_router)
+    api.include_router(stock_router)
     api.include_router(documents_router)
     api.include_router(invitations_router)
     api.include_router(roles_router)

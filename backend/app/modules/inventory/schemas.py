@@ -1,8 +1,17 @@
 import uuid
-from datetime import datetime
-from typing import Annotated
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, StringConstraints
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    Field,
+    StringConstraints,
+)
+
+from app.platform.validators import reject_non_plain_number
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
@@ -45,3 +54,157 @@ class WarehouseOut(BaseModel):
     archived: bool
     created_at: datetime
     updated_at: datetime
+
+
+# ---------------- склад: операции, остатки, движения (срез 4.1) ----------------
+
+OpKind = Literal["receipt", "issue", "transfer"]  # остальные виды появятся в срезах 4.2–4.3
+
+
+def _no_float(v: Any) -> Any:
+    """Деньги/количества: только строка с обычной десятичной записью или целое (без float и «1e3»)."""
+    return reject_non_plain_number(v, "number_invalid")
+
+
+def _fits(v: Decimal) -> Decimal:
+    if v >= Decimal(10) ** 14:
+        raise ValueError("too_large")
+    return v
+
+
+PositiveQty = Annotated[
+    Decimal,
+    BeforeValidator(_no_float),
+    Field(gt=0, max_digits=20, decimal_places=6, allow_inf_nan=False),
+    AfterValidator(_fits),
+]
+Reference = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=100),
+    AfterValidator(_blank_to_none),
+]
+
+
+class StockLineIn(BaseModel):
+    product_id: uuid.UUID
+    quantity: PositiveQty
+
+
+class OperationCreate(BaseModel):
+    kind: OpKind
+    op_date: date
+    warehouse_id: uuid.UUID
+    to_warehouse_id: uuid.UUID | None = None
+    reference: Reference = None
+    notes: Notes = None
+    lines: Annotated[list[StockLineIn], Field(min_length=1, max_length=500)]
+
+
+class OperationUpdate(BaseModel):
+    """Частичное обновление черновика; строки (если переданы) заменяются целиком."""
+
+    expected_version: int = Field(ge=1)
+    op_date: date | None = None
+    warehouse_id: uuid.UUID | None = None
+    to_warehouse_id: uuid.UUID | None = None
+    reference: Reference = None
+    notes: Notes = None
+    lines: Annotated[list[StockLineIn], Field(min_length=1, max_length=500)] | None = None
+
+
+class OperationAction(BaseModel):
+    expected_version: int = Field(ge=1)
+
+
+class NameRef(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
+class UnitRef(BaseModel):
+    code: str
+    name_uz: str | None
+    name_ru: str | None
+    name_en: str | None
+
+
+class StockLineOut(BaseModel):
+    position: int
+    product_id: uuid.UUID
+    sku: str
+    name: str
+    unit: UnitRef
+    quantity: str
+
+
+class OperationOut(BaseModel):
+    id: uuid.UUID
+    kind: str
+    status: str
+    op_date: date
+    warehouse: NameRef
+    to_warehouse: NameRef | None
+    reference: str | None
+    notes: str | None
+    version: int
+    lines: list[StockLineOut]
+    created_by_name: str | None
+    posted_by_name: str | None
+    posted_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class OperationListItem(BaseModel):
+    id: uuid.UUID
+    kind: str
+    status: str
+    op_date: date
+    warehouse_name: str
+    to_warehouse_name: str | None
+    reference: str | None
+    lines_count: int
+    created_at: datetime
+
+
+class BalanceOut(BaseModel):
+    warehouse: NameRef
+    product_id: uuid.UUID
+    sku: str
+    name: str
+    unit: UnitRef
+    quantity: str
+
+
+class MovementOut(BaseModel):
+    id: uuid.UUID
+    operation_id: uuid.UUID
+    kind: str
+    reference: str | None
+    warehouse: NameRef
+    product_id: uuid.UUID
+    sku: str
+    name: str
+    unit: UnitRef
+    quantity_delta: str
+    op_date: date
+    occurred_at: datetime
+
+
+class ReconciliationRow(BaseModel):
+    warehouse: NameRef
+    product_id: uuid.UUID
+    sku: str
+    name: str
+    balance: str
+    movements_sum: str
+
+
+class ReconciliationOut(BaseModel):
+    ok: bool
+    checked_pairs: int
+    mismatches: list[ReconciliationRow]
+
+
+class StockSettings(BaseModel):
+    negative_stock_policy: Literal["forbid", "allow"]

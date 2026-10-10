@@ -39,6 +39,8 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
   const productsHref = `${home}/products`;
   const warehousesHref = `${home}/warehouses`;
   const documentsHref = `${home}/documents`;
+  const stockHref = `${home}/stock`;
+  const canStock = !!current?.permissions.includes("stock.read");
   const canDocuments = !!current?.permissions.includes("documents.read");
   const canCatalog = !!current?.permissions.includes("catalog.read");
   const canWarehouses = !!current?.permissions.includes("warehouses.read");
@@ -57,6 +59,9 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
           ) : null}
           {canDocuments ? (
             <Link href={documentsHref} aria-current={pathname.startsWith(documentsHref) ? "page" : undefined}>{t.documents.navLabel}</Link>
+          ) : null}
+          {canStock ? (
+            <Link href={stockHref} aria-current={pathname.startsWith(stockHref) ? "page" : undefined}>{t.stock.navLabel}</Link>
           ) : null}
           {canCatalog || canWarehouses ? <div className="nav-section">{t.catalog.navSection}</div> : null}
           {canCatalog ? (

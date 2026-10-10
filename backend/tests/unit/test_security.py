@@ -45,3 +45,17 @@ def test_weak_passwords_rejected(password: str, email: str) -> None:
 def test_request_hash_is_order_independent() -> None:
     assert request_hash({"a": 1, "b": 2}) == request_hash({"b": 2, "a": 1})
     assert request_hash({"a": 1}) != request_hash({"a": 2})
+
+
+def test_plain_decimal_validator_rejects_exponent_and_floats() -> None:
+    import pytest
+
+    from app.platform.validators import reject_non_plain_number
+
+    for ok in ("1", "1.5", "-2", " 3.25 ", 7):
+        assert reject_non_plain_number(ok, "x") == ok
+    for bad in ("1e3", "1E3", "+1", "Infinity", "NaN", ".5", "5.", 1.5):
+        with pytest.raises(ValueError, match="x"):
+            reject_non_plain_number(bad, "x")
+    for garbage in ("abc", "1,5", "", "0x10"):  # не числа: дальше решает pydantic
+        assert reject_non_plain_number(garbage, "x") == garbage

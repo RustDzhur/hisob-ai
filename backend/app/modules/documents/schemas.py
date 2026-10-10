@@ -7,6 +7,7 @@ from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, StringCo
 
 from app.modules.catalog.schemas import CurrencyCode, Money
 from app.modules.documents.models import DOC_TYPES
+from app.platform.validators import reject_non_plain_number
 
 DocType = Literal[
     "invoice",
@@ -29,9 +30,8 @@ def _blank_to_none(v: str | None) -> str | None:
 
 
 def _no_float(v: Any) -> Any:
-    if isinstance(v, float):
-        raise ValueError("number_invalid")
-    return v
+    """Деньги/количества: только строка с обычной десятичной записью или целое (без float и «1e3»)."""
+    return reject_non_plain_number(v, "number_invalid")
 
 
 def _fits(v: Decimal) -> Decimal:

@@ -46,6 +46,7 @@ _PYDANTIC_CODES = {
     "string_too_long": "too_long",
     "string_pattern_mismatch": "invalid",
     "greater_than_equal": "must_be_non_negative",
+    "greater_than": "must_be_positive",
     "decimal_max_places": "too_many_decimals",
     "decimal_max_digits": "too_large",
     "decimal_parsing": "number_invalid",

@@ -27,3 +27,12 @@ export function formatMoney(value: string, currency: string, locale: Locale): st
 export function normalizeMoneyInput(raw: string): string {
   return raw.replace(/[\s ]/g, "").replace(",", ".");
 }
+
+/** Количество из СТРОКИ сервера (до 6 знаков): та же группировка и разделители, без валюты и без float. */
+export function formatQuantity(value: string, locale: Locale): string {
+  const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.trim());
+  if (!m) return value;
+  const [, sign, int, frac] = m;
+  const { group, decimal } = SEPARATORS[locale];
+  return `${sign}${int.replace(/\B(?=(\d{3})+(?!\d))/g, group)}${frac ? decimal + frac : ""}`;
+}

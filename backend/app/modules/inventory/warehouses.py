@@ -10,6 +10,7 @@ from sqlalchemy.sql.expression import SQLColumnExpression
 
 from app.modules.audit import service as audit
 from app.modules.identity.service import Principal
+from app.modules.inventory import stock
 from app.modules.inventory.models import Warehouse
 from app.modules.inventory.schemas import WarehouseCreate, WarehouseOut, WarehouseUpdate
 from app.modules.rbac import service as rbac
@@ -171,6 +172,12 @@ def set_archived(
     w = _get(db, org_id, wid, lock=True)
     if (w.archived_at is not None) == archived:
         return _out(w)
+    if archived and stock.has_stock(db, org_id, w.id):
+        raise AppError(
+            409,
+            "warehouse_has_stock",
+            "На складе есть остаток: сначала спишите или переместите его.",
+        )
     w.archived_at = utcnow() if archived else None
     audit.record(
         db,

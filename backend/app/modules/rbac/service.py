@@ -19,6 +19,9 @@ DOCUMENTS_READ = "documents.read"
 DOCUMENTS_UPLOAD = "documents.upload"
 DOCUMENTS_REVIEW = "documents.review"
 DOCUMENTS_APPROVE = "documents.approve"
+STOCK_READ = "stock.read"
+STOCK_MANAGE = "stock.manage"
+STOCK_POST = "stock.post"
 
 ROLE_OWNER = "owner"
 

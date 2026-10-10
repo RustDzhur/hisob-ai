@@ -14,7 +14,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.platform.validators import validate_tin
+from app.platform.validators import reject_non_plain_number, validate_tin
 
 _CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,15}$")
 
@@ -168,10 +168,8 @@ def _barcode(v: str) -> str:
 
 
 def _no_float(v: Any) -> Any:
-    """Деньги не принимаются как float (двоичная погрешность): только строка или целое."""
-    if isinstance(v, float):
-        raise ValueError("price_invalid")
-    return v
+    """Деньги/количества: только строка с обычной десятичной записью или целое (без float и «1e3»)."""
+    return reject_non_plain_number(v, "price_invalid")
 
 
 def _fits_numeric(v: Decimal) -> Decimal:
