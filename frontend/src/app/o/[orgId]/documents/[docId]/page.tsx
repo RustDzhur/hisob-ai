@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EntityPicker } from "@/components/EntityPicker";
+import { ExtractionPanel, type Suggestion } from "@/components/ExtractionPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Banner, Button, ConfirmDialog, ErrorState, Field, Modal, Skeleton, TextArea } from "@/components/ui";
 import { errorText, fieldErrorMap, fill } from "@/i18n/errors";
@@ -11,10 +12,11 @@ import { useFormat, useLocale, useT } from "@/i18n/LocaleProvider";
 import { pickName } from "@/i18n/names";
 import {
   api, toApiError, type ApiError as ApiErrorT, type Counterparty, type Currency, type DocIssue,
-  type DocumentFull, type DocumentListItem, type Page, type Product, type Unit,
+  type DocumentFull, type DocumentListItem, type MatchCandidate, type Page, type Product, type Unit,
 } from "@/lib/api";
 import { normalizeMoneyInput } from "@/lib/money";
 import { useSession } from "@/lib/session";
+import { suggestionState, valueForForm, type Kind } from "@/lib/suggestions";
 
 type LineForm = {
   description: string; product_id: string; product_label: string; unit_id: string;
@@ -49,6 +51,15 @@ const toPatch = (f: Form, version: number) => ({
     tax_amount: num(l.tax_amount), amount: num(l.amount),
   })),
 });
+
+const HEADER_MAP: Record<string, { key: keyof Form; kind: Kind }> = {
+  doc_type: { key: "doc_type", kind: "text" }, number: { key: "number", kind: "text" }, date: { key: "doc_date", kind: "date" },
+  currency: { key: "currency", kind: "text" }, total_amount: { key: "total_amount", kind: "decimal" }, tax_total: { key: "tax_total", kind: "decimal" },
+};
+const LINE_MAP: Record<string, { key: keyof LineForm; kind: Kind }> = {
+  description: { key: "description", kind: "text" }, quantity: { key: "quantity", kind: "decimal" }, unit_price: { key: "unit_price", kind: "decimal" },
+  discount: { key: "discount", kind: "decimal" }, tax_amount: { key: "tax_amount", kind: "decimal" }, amount: { key: "amount", kind: "decimal" },
+};
 
 export default function DocumentPage() {
   const t = useT();
@@ -194,6 +205,55 @@ export default function DocumentPage() {
   const dupIds = (warnings.find((w) => w.code === "possible_duplicate")?.params?.document_ids as string[] | undefined) ?? [];
   const err = (f: string) => fieldErrs[f];
 
+  const lineLabels: Record<string, string> = {
+    description: t.documents.lDesc, quantity: t.documents.lQty, unit_price: t.documents.lPrice,
+    discount: t.documents.lDiscount, tax_amount: t.documents.lTax, amount: t.documents.lAmount,
+  };
+  const headerLabels: Record<string, string> = {
+    doc_type: t.documents.fType, number: t.documents.fNumber, date: t.documents.fDate, currency: t.documents.fCurrency,
+    total_amount: t.documents.fTotal, tax_total: t.documents.fTax,
+  };
+  const suggestions: Suggestion[] = [];
+  for (const f of doc.extraction.fields) {
+    const m = /^lines\.(\d+)\.(\w+)$/.exec(f.path);
+    const spec = m ? LINE_MAP[m[2]] : HEADER_MAP[f.path];
+    if (!spec || f.value === null) continue;
+    let current = "";
+    let label = headerLabels[f.path] ?? f.path;
+    if (m) {
+      const line = form.lines[Number(m[1]) - 1];
+      if (!line) continue;
+      current = line[spec.key as keyof LineForm] ?? "";
+      label = `${lineLabels[m[2]]} ${m[1]}`;
+    } else {
+      current = String(form[spec.key as keyof Form] ?? "");
+    }
+    const st = suggestionState(current, f, spec.kind);
+    if (st !== "differs") continue;
+    suggestions.push({ path: f.path, label, current, value: valueForForm(spec.kind, f.path, f.value), confidence: f.confidence, evidence: f.evidence });
+  }
+
+  function applySuggestions(list: Suggestion[]) {
+    if (!form) return;
+    const next: Form = { ...form, lines: form.lines.map((l) => ({ ...l })) };
+    for (const s of list) {
+      const m = /^lines\.(\d+)\.(\w+)$/.exec(s.path);
+      if (m) {
+        const line = next.lines[Number(m[1]) - 1];
+        const spec = LINE_MAP[m[2]];
+        if (line && spec) (line as Record<string, string>)[spec.key] = s.value;
+      } else if (HEADER_MAP[s.path]) {
+        (next as Record<string, unknown>)[HEADER_MAP[s.path].key] = s.value;
+      }
+    }
+    setForm(next);
+  }
+
+  const onExtractionDoc = (d: DocumentFull) => {
+    setDoc(d);
+    if (!dirty) setForm(fromDoc(d));
+  };
+
   return (
     <div className="stack">
       <div className="page-head">
@@ -274,6 +334,10 @@ export default function DocumentPage() {
               </div>
             ))}
           </section>
+
+          <ExtractionPanel orgId={orgId} docId={doc.id} extraction={doc.extraction} canRun={canReview} editable={editable}
+            suggestions={suggestions} onApply={applySuggestions} onDoc={onExtractionDoc}
+            onCounterparty={(c: MatchCandidate) => setF({ counterparty_id: c.id, counterparty_label: c.name })} />
 
           <section className="card" aria-labelledby="fields-h">
             <h2 id="fields-h">{t.documents.fields}</h2>

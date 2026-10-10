@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -17,7 +18,9 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.platform.base import Base, new_id, utcnow
@@ -176,3 +179,114 @@ class DocumentLine(Base):
     discount: Mapped[Decimal | None] = mapped_column(Numeric(20, 4), nullable=True)
     tax_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 4), nullable=True)
     amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 4), nullable=True)
+
+
+AI_JOB_STATUSES = ("queued", "running", "succeeded", "failed", "cancelled")
+
+
+class AIJob(Base):
+    """Задача распознавания документа. Источник истины о ходе работы — эта таблица, а не очередь."""
+
+    __tablename__ = "ai_job"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["document_id", "organization_id"],
+            ["document.id", "document.organization_id"],
+            name="fk_ai_job_document",
+        ),
+        UniqueConstraint("id", "organization_id", name="uq_ai_job_id_org"),
+        # на документ — не больше одной активной задачи
+        Index(
+            "uq_ai_job_active_document",
+            "document_id",
+            unique=True,
+            postgresql_where=text("status IN ('queued','running')"),
+        ),
+        Index("ix_ai_job_org_created", "organization_id", "created_at"),
+        CheckConstraint(f"status IN ({_in(AI_JOB_STATUSES)})", name="status"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organization.id"))
+    document_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    status: Mapped[str] = mapped_column(String(20), default="queued")
+    provider: Mapped[str] = mapped_column(String(20))
+    model: Mapped[str] = mapped_column(Text)
+    prompt_version: Mapped[str] = mapped_column(String(20))
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    error_code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tokens_in: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_out: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    requested_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AIResult(Base):
+    """Ответ провайдера и варианты сопоставления. Версии модели и шаблона — в ai_job (ТЗ §8)."""
+
+    __tablename__ = "ai_result"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["job_id", "organization_id"],
+            ["ai_job.id", "ai_job.organization_id"],
+            name="fk_ai_result_job",
+        ),
+    )
+
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    raw_output: Mapped[dict] = mapped_column(JSONB)  # type: ignore[type-arg]
+    matches: Mapped[dict] = mapped_column(JSONB)  # type: ignore[type-arg]
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
+
+
+class ExtractedField(Base):
+    """Поле, предложенное AI: значение, уверенность, фрагмент-источник, результат проверки."""
+
+    __tablename__ = "extracted_field"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["job_id", "organization_id"],
+            ["ai_job.id", "ai_job.organization_id"],
+            name="fk_extracted_field_job",
+        ),
+        UniqueConstraint("job_id", "path", name="uq_extracted_field_path"),
+        Index("ix_extracted_field_document", "document_id"),
+        CheckConstraint("validation IN ('ok','invalid')", name="validation"),
+        CheckConstraint(
+            "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)", name="confidence_range"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    document_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    path: Mapped[str] = mapped_column(Text)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(4, 3), nullable=True)
+    evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+    validation: Mapped[str] = mapped_column(String(10), default="ok")
+    applied: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+
+class AIRuntime(Base):
+    """Одна строка: какой провайдер настроен у воркера (ключей здесь нет). Нужна, чтобы API знал статус."""
+
+    __tablename__ = "ai_runtime"
+    __table_args__ = (CheckConstraint("id = 1", name="single_row"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    provider: Mapped[str] = mapped_column(String(20))
+    model: Mapped[str] = mapped_column(Text)
+    configured: Mapped[bool] = mapped_column(Boolean)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
+    )

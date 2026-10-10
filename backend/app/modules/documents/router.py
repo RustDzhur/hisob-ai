@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.modules.documents import file_checks
 from app.modules.documents import service as svc
+from app.modules.documents.extraction import service as ai
 from app.modules.documents.models import DOC_TYPES
 from app.modules.documents.schemas import (
     ActionIn,
+    AIStatusOut,
     ApproveIn,
     DocumentListItem,
     DocumentOut,
@@ -29,6 +31,12 @@ from app.platform.listing import ListParams, Page
 router = APIRouter(prefix="/organizations/{org_id}/documents", tags=["documents"])
 DbSession = Annotated[Session, Depends(get_db)]
 Csrf = Annotated[None, Depends(require_csrf)]
+
+
+@router.get("/ai-status", response_model=AIStatusOut)
+def ai_status(org_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession) -> AIStatusOut:
+    """Настроено ли распознавание (провайдер и модель; ключей здесь никогда нет)."""
+    return ai.ai_status(db, principal, org_id)
 
 
 @router.get("", response_model=Page[DocumentListItem])
@@ -74,6 +82,7 @@ async def upload_document(
     db: DbSession,
     file: Annotated[UploadFile, File()],
     doc_type: Annotated[str, Form()] = "other",
+    extract: Annotated[bool, Form()] = False,
 ) -> DocumentOut:
     if doc_type not in DOC_TYPES:
         raise AppError(
@@ -102,7 +111,7 @@ async def upload_document(
                 ],
             )
         chunks.append(chunk)
-    return svc.upload_document(
+    doc = svc.upload_document(
         db,
         principal,
         org_id,
@@ -110,6 +119,14 @@ async def upload_document(
         data=b"".join(chunks),
         doc_type=doc_type,
     )
+    if extract:
+        # Загрузка уже сохранена; если распознавание не запустилось (не настроено, лимит, очередь) —
+        # документ остаётся на проверке, а причину пользователь увидит при ручном запуске.
+        try:
+            return ai.start_extraction(db, principal, org_id, doc.id)
+        except AppError:
+            db.rollback()
+    return doc
 
 
 @router.get("/{doc_id}", response_model=DocumentOut)
@@ -156,6 +173,20 @@ def download_file(
             "Cache-Control": "private, no-store",
         },
     )
+
+
+@router.post("/{doc_id}/extract", response_model=DocumentOut, status_code=202)
+def start_extraction(
+    org_id: uuid.UUID, doc_id: uuid.UUID, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> DocumentOut:
+    return ai.start_extraction(db, principal, org_id, doc_id)
+
+
+@router.post("/{doc_id}/extract/cancel", response_model=DocumentOut)
+def cancel_extraction(
+    org_id: uuid.UUID, doc_id: uuid.UUID, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> DocumentOut:
+    return ai.cancel_extraction(db, principal, org_id, doc_id)
 
 
 @router.patch("/{doc_id}", response_model=DocumentOut)

@@ -205,6 +205,7 @@ export type DocumentFull = {
   lines: DocLine[];
   issues: DocIssue[];
   version: number;
+  extraction: Extraction;
   duplicate_of_id: string | null;
   rejection_reason: string | null;
   approved_by_name: string | null;
@@ -226,3 +227,39 @@ export type DocumentListItem = {
   version: number;
   created_at: string;
 };
+
+export type ExtractedField = {
+  path: string;
+  value: string | null;
+  confidence: number | null;
+  evidence: string | null;
+  validation: "ok" | "invalid";
+  applied: boolean;
+};
+export type MatchCandidate = {
+  id: string;
+  name: string;
+  tin?: string | null;
+  sku?: string;
+  reason: string;
+  score: number;
+  party?: string;
+  archived: boolean;
+};
+export type Extraction = {
+  job: {
+    id: string;
+    status: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+    provider: string;
+    model: string;
+    mock: boolean;
+    error_code: string | null;
+    error_message: string | null;
+    created_at: string;
+    finished_at: string | null;
+  } | null;
+  fields: ExtractedField[];
+  counterparty_candidates: MatchCandidate[];
+  line_matches: Record<string, MatchCandidate[]>;
+};
+export type AIStatus = { configured: boolean; provider: string | null; model: string | null; mock: boolean };

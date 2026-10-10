@@ -29,6 +29,20 @@ class Settings(BaseSettings):
     s3_secret_key: str = ""
     s3_region: str = "us-east-1"
     max_upload_bytes: int = 20 * 1024 * 1024
+
+    # Фоновые задачи (Dramatiq + Redis). Без REDIS_URL (тесты) используется заглушка брокера.
+    redis_url: str | None = None
+
+    # Распознавание документов. Ключи есть только у воркера; mock — только для тестов и помечается в UI.
+    ai_provider: str = "openai"  # openai | deepseek | mock
+    openai_api_key: str = ""
+    openai_model: str = ""
+    openai_base_url: str = "https://api.openai.com"
+    deepseek_api_key: str = ""
+    deepseek_model: str = ""
+    deepseek_base_url: str = "https://api.deepseek.com"
+    ai_timeout_seconds: int = 120
+    ai_max_jobs_per_day: int = 200  # защита от случайного расхода на организацию
     # Доверять X-Forwarded-For только если перед API стоит наш прокси.
     trust_proxy_headers: bool = False
 

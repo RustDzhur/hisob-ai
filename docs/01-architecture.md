@@ -115,7 +115,7 @@ modules/<name>/
 
 ## 6. Деплой и окружения
 
-- `dev`: Docker Compose — `postgres:16`, `redis:7`, `minio` (с этапа 3), `backend`, `worker`, `frontend`. Без Docker возможен локальный запуск (Homebrew Postgres) — см. Q1.
+- `dev`: Docker Compose — `postgres:16`, `redis:7`, `storage` (SeaweedFS, S3 API; с этапа 3), `backend`, `worker`, `frontend`. Без Docker возможен локальный запуск (Homebrew Postgres) — см. Q1.
 - `ci`: GitHub Actions (предположение — Q2): lint → typecheck → unit → integration (service-контейнер Postgres) → Playwright → dependency/security scan.
 - `staging`/`prod`: этап 9, площадка не выбрана (Q4); данные Узбекистана и трансграничная передача требуют юридической проверки (ТЗ §13).
 

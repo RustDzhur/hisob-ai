@@ -15,6 +15,7 @@ from sqlalchemy.sql.expression import SQLColumnExpression
 from app.modules.audit import service as audit
 from app.modules.catalog.models import Counterparty, Product, UnitOfMeasure
 from app.modules.documents import file_checks, validation
+from app.modules.documents.extraction.view import build_view
 from app.modules.documents.models import Document, DocumentFile, DocumentLine
 from app.modules.documents.schemas import (
     CounterpartyRef,
@@ -404,6 +405,7 @@ def _load_out(db: Session, access: OrgAccess, doc: Document) -> DocumentOut:
             for i in issues
         ],
         version=doc.version,
+        extraction=build_view(db, doc.id),
         duplicate_of_id=doc.duplicate_of_id,
         rejection_reason=doc.rejection_reason,
         approved_by_name=names.get(doc.approved_by) if doc.approved_by else None,

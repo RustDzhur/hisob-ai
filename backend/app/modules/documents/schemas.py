@@ -138,6 +138,41 @@ class LineOut(BaseModel):
     amount: str | None
 
 
+class ExtractedFieldOut(BaseModel):
+    path: str
+    value: str | None
+    confidence: float | None
+    evidence: str | None
+    validation: str
+    applied: bool
+
+
+class ExtractionJobOut(BaseModel):
+    id: uuid.UUID
+    status: str  # queued | running | succeeded | failed | cancelled
+    provider: str
+    model: str
+    mock: bool  # результаты mock-провайдера не являются распознаванием; в UI всегда помечаются
+    error_code: str | None
+    error_message: str | None
+    created_at: datetime
+    finished_at: datetime | None
+
+
+class ExtractionView(BaseModel):
+    job: ExtractionJobOut | None = None
+    fields: list[ExtractedFieldOut] = Field(default_factory=list)
+    counterparty_candidates: list[dict[str, Any]] = Field(default_factory=list)
+    line_matches: dict[str, list[dict[str, Any]]] = Field(default_factory=dict)
+
+
+class AIStatusOut(BaseModel):
+    configured: bool
+    provider: str | None
+    model: str | None
+    mock: bool
+
+
 class DocumentOut(BaseModel):
     id: uuid.UUID
     doc_type: str
@@ -153,6 +188,7 @@ class DocumentOut(BaseModel):
     lines: list[LineOut]
     issues: list[IssueOut]
     version: int
+    extraction: ExtractionView
     duplicate_of_id: uuid.UUID | None
     rejection_reason: str | None
     approved_by_name: str | None

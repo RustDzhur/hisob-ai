@@ -1,6 +1,48 @@
 {
   "components": {
     "schemas": {
+      "AIStatusOut": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "mock": {
+            "title": "Mock",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "required": [
+          "configured",
+          "provider",
+          "model",
+          "mock"
+        ],
+        "title": "AIStatusOut",
+        "type": "object"
+      },
       "ActionIn": {
         "properties": {
           "expected_version": {
@@ -209,6 +251,11 @@
             "default": "other",
             "title": "Doc Type",
             "type": "string"
+          },
+          "extract": {
+            "default": false,
+            "title": "Extract",
+            "type": "boolean"
           },
           "file": {
             "contentMediaType": "application/octet-stream",
@@ -825,6 +872,9 @@
             ],
             "title": "Duplicate Of Id"
           },
+          "extraction": {
+            "$ref": "#/components/schemas/ExtractionView"
+          },
           "file": {
             "anyOf": [
               {
@@ -938,6 +988,7 @@
           "lines",
           "issues",
           "version",
+          "extraction",
           "duplicate_of_id",
           "rejection_reason",
           "approved_by_name",
@@ -1124,6 +1175,184 @@
           "original_id"
         ],
         "title": "DuplicateIn",
+        "type": "object"
+      },
+      "ExtractedFieldOut": {
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "boolean"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "validation": {
+            "title": "Validation",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "path",
+          "value",
+          "confidence",
+          "evidence",
+          "validation",
+          "applied"
+        ],
+        "title": "ExtractedFieldOut",
+        "type": "object"
+      },
+      "ExtractionJobOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mock": {
+            "title": "Mock",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "provider",
+          "model",
+          "mock",
+          "error_code",
+          "error_message",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "ExtractionJobOut",
+        "type": "object"
+      },
+      "ExtractionView": {
+        "properties": {
+          "counterparty_candidates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Counterparty Candidates",
+            "type": "array"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ExtractedFieldOut"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionJobOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "line_matches": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "title": "Line Matches",
+            "type": "object"
+          }
+        },
+        "title": "ExtractionView",
         "type": "object"
       },
       "FileOut": {
@@ -4270,6 +4499,50 @@
         ]
       }
     },
+    "/api/v1/organizations/{org_id}/documents/ai-status": {
+      "get": {
+        "description": "Настроено ли распознавание (провайдер и модель; ключей здесь никогда нет).",
+        "operationId": "ai_status_api_v1_organizations__org_id__documents_ai_status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ai Status",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
     "/api/v1/organizations/{org_id}/documents/{doc_id}": {
       "get": {
         "operationId": "get_document_api_v1_organizations__org_id__documents__doc_id__get",
@@ -4505,6 +4778,112 @@
           }
         },
         "summary": "Archive",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/documents/{doc_id}/extract": {
+      "post": {
+        "operationId": "start_extraction_api_v1_organizations__org_id__documents__doc_id__extract_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Extraction",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/documents/{doc_id}/extract/cancel": {
+      "post": {
+        "operationId": "cancel_extraction_api_v1_organizations__org_id__documents__doc_id__extract_cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Extraction",
         "tags": [
           "documents"
         ]

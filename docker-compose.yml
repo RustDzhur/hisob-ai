@@ -1,7 +1,6 @@
 # Hisob AI — локальная/серверная среда разработки.
 # Порты публикуются только на 127.0.0.1. Файлы документов хранятся в сервисе storage (S3 API).
-# Redis появится вместе с первой фоновой
-# задачей (этап 3): сейчас им ничего не пользуется, поэтому его здесь нет.
+# Redis — очередь фоновых задач распознавания (не источник финансовой истины). Ключи AI — только у worker.
 name: hisob
 
 x-backend-env: &backend-env
@@ -44,6 +43,35 @@ services:
     volumes:
       - storage-data:/data
 
+  # Брокер очереди распознавания. Данные не критичны: источник истины о задачах — PostgreSQL (таблица ai_job).
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  # Воркер фоновых задач: единственный контейнер с ключами AI-провайдеров.
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      REDIS_URL: redis://redis:6379/0
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
+    command: ["dramatiq", "app.worker", "--processes", "1", "--threads", "2", "--queues", "extraction"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+      storage:
+        condition: service_started
+
   migrate:
     build: ./backend
     environment: *backend-env
@@ -55,7 +83,9 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
-    environment: *backend-env
+    environment:
+      <<: *backend-env
+      REDIS_URL: redis://redis:6379/0
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-8300}:8000"
@@ -63,6 +93,8 @@ services:
       migrate:
         condition: service_completed_successfully
       storage:
+        condition: service_started
+      redis:
         condition: service_started
 
   frontend:
@@ -109,3 +141,4 @@ services:
 volumes:
   pgdata:
   storage-data:
+  redis-data:

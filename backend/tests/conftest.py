@@ -10,6 +10,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 
+from tests.ai_helpers import mock_ai  # noqa: F401  (фикстура для тестов распознавания)
+
 TEST_DB = "hisob_test"
 _HOST = os.environ.get("TEST_POSTGRES_HOST", "postgres")
 _ADMIN_URL = os.environ.get("TEST_ADMIN_URL", "")
@@ -23,7 +25,7 @@ if _ADMIN_URL:
     )
     os.environ["COOKIE_SECURE"] = "false"
 
-TABLES = "audit_event, idempotency_key, invitation, membership, organization, sessions, login_attempt, users"
+TABLES = "audit_event, idempotency_key, invitation, membership, organization, sessions, login_attempt, users, ai_runtime"
 
 
 def _admin_engine(db: str = "postgres") -> Engine:

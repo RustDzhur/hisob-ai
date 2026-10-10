@@ -40,12 +40,21 @@ export function DocumentsView() {
   const [results, setResults] = useState<Result[]>([]);
   const [busy, setBusy] = useState(false);
   const [over, setOver] = useState(false);
+  const [aiOn, setAiOn] = useState(false);
+  const [aiConfigured, setAiConfigured] = useState(false);
 
   useEffect(() => {
     if (searchText === state.q) return;
     const id = setTimeout(() => update({ q: searchText }), 300);
     return () => clearTimeout(id);
   }, [searchText, state.q, update]);
+
+  useEffect(() => {
+    if (!canUpload) return;
+    api<{ configured: boolean }>(`/organizations/${orgId}/documents/ai-status`)
+      .then((r) => setAiConfigured(r.configured))
+      .catch(() => setAiConfigured(false));
+  }, [canUpload, orgId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +103,7 @@ export function DocumentsView() {
       const fd = new FormData();
       fd.append("file", files[i]);
       fd.append("doc_type", docType);
+      if (aiOn && aiConfigured) fd.append("extract", "true");
       try {
         const d = await api<DocumentFull>(`/organizations/${orgId}/documents`, { method: "POST", body: fd });
         res[i] = { name: files[i].name, state: "ok", docId: d.id };
@@ -209,6 +219,12 @@ export function DocumentsView() {
             <ul className="upload-list">{files.map((f, i) => <li key={`${f.name}-${i}`}>{f.name}</li>)}</ul>
           ) : null}
         </div>
+        {canUpload && org?.permissions.includes("documents.review") ? (
+          <label className="ack-row">
+            <input type="checkbox" checked={aiOn && aiConfigured} disabled={busy || !aiConfigured} onChange={(e) => setAiOn(e.target.checked)} />
+            <span>{t.ai.extractNow}{!aiConfigured ? <span className="hint"> — {t.ai.extractUnavailable}</span> : null}</span>
+          </label>
+        ) : null}
         <Button onClick={() => void startUpload()} loading={busy} disabled={files.length === 0}>{t.documents.startUpload}</Button>
 
         {results.length ? (

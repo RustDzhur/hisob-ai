@@ -149,3 +149,22 @@ def test_tolerance_grows_with_number_of_terms() -> None:
     assert tolerance(2, 1) == D("0.01")
     assert tolerance(2, 10) == D("0.05")
     assert tolerance(0, 1) == D(1)
+
+
+def test_total_with_document_level_tax_only() -> None:
+    """Налог указан только итогом по документу (в строках его нет) — частый случай реальных документов."""
+    lines = [line(1, amount=D("200")), line(2, amount=D("100"), quantity=D(1), unit_price=D("100"))]
+    ok = validate(
+        header(total_amount=D("336"), tax_total=D("36")), lines, minor_units=2, today=TODAY
+    )
+    assert ok == []
+    assert (
+        validate(
+            header(total_amount=D("300"), tax_total=D("36")), lines, minor_units=2, today=TODAY
+        )
+        == []
+    )  # цены с налогом
+    wrong = validate(
+        header(total_amount=D("999"), tax_total=D("36")), lines, minor_units=2, today=TODAY
+    )
+    assert ("total_mismatch", "warning") in codes(wrong)

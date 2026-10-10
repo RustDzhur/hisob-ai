@@ -199,3 +199,22 @@ test("документы на узбекском и английском", async
   await expect(o.page.getByText("No documents yet. Upload the first file.")).toBeVisible();
   await o.ctx.close();
 });
+
+test("распознавание: панель AI видна, без запуска платных запросов", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  const drawer = await uploadViaUi(o.page, o.orgUrl, "ai-1.pdf", pdf(uniq()));
+  // в окне загрузки есть переключатель распознавания (доступен только если провайдер настроен)
+  await expect(drawer.getByText("Распознать сразу (AI)")).toBeVisible();
+  await expect(drawer.getByText("Загружен.")).toBeVisible();
+  await drawer.getByRole("link", { name: "Открыть" }).click();
+
+  const panel = o.page.getByTestId("ai-panel");
+  await expect(panel.getByRole("heading", { name: "Распознавание (AI)" })).toBeVisible();
+  await expect(panel.getByText("AI только предлагает значения")).toBeVisible();
+  // либо кнопка запуска, либо честное сообщение «не настроено» — но не мёртвая кнопка
+  const run = panel.getByRole("button", { name: "Распознать", exact: true });
+  const off = panel.getByText("Распознавание не настроено");
+  await expect(run.or(off)).toBeVisible();
+  await expect(panel.getByText("MOCK")).toHaveCount(0);
+  await o.ctx.close();
+});

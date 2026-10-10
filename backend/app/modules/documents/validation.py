@@ -132,7 +132,9 @@ def validate(
     # итог ≈ Σ сумм строк ИЛИ Σ сумм + Σ налогов (какой именно режим цен — нам неизвестно)
     if header.total_amount is not None and lines and not incomplete:
         net = sum((ln.amount or Decimal(0) for ln in lines), Decimal(0))
-        gross = net + sum(line_taxes, Decimal(0))
+        # налог берём построчный; если в строках его нет, а по документу указан — итог налога по документу
+        taxes = sum(line_taxes, Decimal(0)) if line_taxes else (header.tax_total or Decimal(0))
+        gross = net + taxes
         tol = tolerance(minor_units, len(lines))
         if abs(net - header.total_amount) > tol and abs(gross - header.total_amount) > tol:
             add(
