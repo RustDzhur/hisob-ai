@@ -2,15 +2,17 @@ import uuid
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Path, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.modules.identity.deps import CurrentPrincipal
 from app.modules.rbac.service import ORG_READ
-from app.modules.tenancy import audit_view, members, service
+from app.modules.tenancy import audit_view, currencies, members, service
 from app.modules.tenancy.schemas import (
     AuditPage,
+    CurrencyOut,
+    CurrencyToggle,
     InvitationAccept,
     InvitationCreate,
     InvitationCreated,
@@ -133,6 +135,25 @@ def list_audit(
 @router.get("/{org_id}/audit/actions", response_model=list[str])
 def list_audit_actions(org_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession) -> list[str]:
     return audit_view.list_actions(db, principal, org_id)
+
+
+@router.get("/{org_id}/currencies", response_model=list[CurrencyOut])
+def list_currencies(
+    org_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession
+) -> list[CurrencyOut]:
+    return currencies.list_currencies(db, principal, org_id)
+
+
+@router.put("/{org_id}/currencies/{code}", response_model=list[CurrencyOut])
+def set_currency(
+    org_id: uuid.UUID,
+    code: Annotated[str, Path(min_length=3, max_length=3)],
+    body: CurrencyToggle,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> list[CurrencyOut]:
+    return currencies.set_enabled(db, principal, org_id, code, body.enabled)
 
 
 invitations_router = APIRouter(prefix="/invitations", tags=["invitations"])

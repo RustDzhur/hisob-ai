@@ -8,11 +8,12 @@ from app.modules.audit import service as audit
 from app.modules.identity.service import Principal
 from app.modules.rbac import service as rbac
 from app.modules.tenancy.access import authorize
-from app.modules.tenancy.models import Membership, Organization
+from app.modules.tenancy.models import Currency, Membership, Organization, OrganizationCurrency
 from app.modules.tenancy.schemas import OrganizationCreate, OrganizationOut
 from app.platform import idempotency
 from app.platform.base import new_id
 from app.platform.db import set_context
+from app.platform.errors import AppError
 
 
 def _out(org: Organization, role_code: str, permissions: frozenset[str]) -> OrganizationOut:
@@ -39,6 +40,19 @@ def create_organization(
     if saved is not None:
         return saved.response_body, saved.response_status, True
 
+    if db.get(Currency, data.base_currency) is None:
+        raise AppError(
+            422,
+            "validation_error",
+            "Неизвестная валюта.",
+            [
+                {
+                    "field": "base_currency",
+                    "code": "currency_unknown",
+                    "message": "Неизвестная валюта.",
+                }
+            ],
+        )
     owner_role_id = rbac.get_role_id(db, rbac.ROLE_OWNER)
     org = Organization(
         id=new_id(),
@@ -59,6 +73,11 @@ def create_organization(
             user_id=user.id,
             role_id=owner_role_id,
             status="active",
+        )
+    )
+    db.add(
+        OrganizationCurrency(
+            organization_id=org.id, currency_code=data.base_currency, is_base=True, enabled=True
         )
     )
     audit.record(

@@ -44,6 +44,20 @@ class OrganizationCreate(BaseModel):
     base_currency: Annotated[str, AfterValidator(_ccy)] = DEFAULT_CURRENCY
 
 
+class CurrencyOut(BaseModel):
+    code: str
+    minor_units: int
+    name_uz: str
+    name_ru: str
+    name_en: str
+    enabled: bool
+    is_base: bool
+
+
+class CurrencyToggle(BaseModel):
+    enabled: bool
+
+
 class OrganizationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

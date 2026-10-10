@@ -113,3 +113,22 @@ export type SessionInfo = {
   user_agent: string | null;
   current: boolean;
 };
+
+export type Currency = {
+  code: string;
+  minor_units: number;
+  name_uz: string;
+  name_ru: string;
+  name_en: string;
+  enabled: boolean;
+  is_base: boolean;
+};
+export type Unit = {
+  id: string;
+  code: string;
+  name_uz: string | null;
+  name_ru: string | null;
+  name_en: string | null;
+  is_system: boolean;
+  is_active: boolean;
+};

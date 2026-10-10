@@ -54,10 +54,29 @@ def admin_engine() -> Iterator[Engine]:
     engine.dispose()
 
 
-@pytest.fixture
-def clean_db(admin_engine: Engine) -> Iterator[None]:
+@pytest.fixture(scope="session")
+def system_units(admin_engine: Engine) -> list[dict[str, object]]:
+    """Системные единицы из миграции: TRUNCATE ... CASCADE стирает их вместе с организациями."""
     with admin_engine.connect() as conn:
-        conn.execute(text(f"TRUNCATE {TABLES} CASCADE"))
+        rows = conn.execute(
+            text(
+                "SELECT id, code::text AS code, name_uz, name_ru, name_en FROM unit_of_measure WHERE organization_id IS NULL"
+            )
+        ).mappings()
+        return [dict(r) for r in rows]
+
+
+@pytest.fixture
+def clean_db(admin_engine: Engine, system_units: list[dict[str, object]]) -> Iterator[None]:
+    with admin_engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {TABLES}, unit_of_measure CASCADE"))
+        conn.execute(
+            text(
+                "INSERT INTO unit_of_measure (id, code, name_uz, name_ru, name_en) "
+                "VALUES (:id, :code, :name_uz, :name_ru, :name_en)"
+            ),
+            system_units,
+        )
     yield
 
 

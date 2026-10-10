@@ -44,6 +44,7 @@ _PYDANTIC_CODES = {
     "missing": "required",
     "string_too_short": "too_short",
     "string_too_long": "too_long",
+    "string_pattern_mismatch": "invalid",
 }
 
 

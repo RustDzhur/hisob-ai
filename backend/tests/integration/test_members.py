@@ -57,7 +57,13 @@ def test_invite_preview_accept_flow(new_client: NewClient, admin_engine: Engine)
     register(invitee, "buh@example.uz")
     joined = accept(invitee, token)
     assert joined.status_code == 200 and joined.json()["role"] == "accountant"
-    assert joined.json()["permissions"] == ["members.read", "org.read"]
+    assert joined.json()["permissions"] == [
+        "catalog.manage",
+        "catalog.read",
+        "members.read",
+        "org.read",
+        "warehouses.read",
+    ]
     assert [o["id"] for o in invitee.get("/api/v1/organizations").json()] == [org]
 
     rows = members(owner, org)

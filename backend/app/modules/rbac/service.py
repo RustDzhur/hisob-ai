@@ -11,6 +11,10 @@ ORG_MANAGE = "org.manage"
 MEMBERS_READ = "members.read"
 MEMBERS_MANAGE = "members.manage"
 AUDIT_READ = "audit.read"
+CATALOG_READ = "catalog.read"
+CATALOG_MANAGE = "catalog.manage"
+WAREHOUSES_READ = "warehouses.read"
+WAREHOUSES_MANAGE = "warehouses.manage"
 
 ROLE_OWNER = "owner"
 

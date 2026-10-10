@@ -8,11 +8,13 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     LargeBinary,
     String,
     Text,
     UniqueConstraint,
     Uuid,
+    false,
     func,
     text,
     true,
@@ -87,3 +89,31 @@ class Invitation(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Currency(Base):
+    """Глобальный справочник валют (ISO 4217). Курсов здесь нет: они зависят от правил учёта (этап 5)."""
+
+    __tablename__ = "currency"
+
+    code: Mapped[str] = mapped_column(String(3), primary_key=True)
+    minor_units: Mapped[int] = mapped_column(Integer)
+    name_uz: Mapped[str] = mapped_column(Text)
+    name_ru: Mapped[str] = mapped_column(Text)
+    name_en: Mapped[str] = mapped_column(Text)
+
+
+class OrganizationCurrency(Base):
+    """Валюты, доступные организации. Базовая валюта всегда включена."""
+
+    __tablename__ = "organization_currency"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organization.id"), primary_key=True
+    )
+    currency_code: Mapped[str] = mapped_column(ForeignKey("currency.code"), primary_key=True)
+    is_base: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
+    )

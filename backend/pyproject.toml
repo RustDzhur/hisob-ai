@@ -64,6 +64,7 @@ root_packages = ["app"]
 name = "Module layering"
 type = "layers"
 layers = [
+    "app.modules.catalog",
     "app.modules.tenancy",
     "app.modules.rbac",
     "app.modules.identity",

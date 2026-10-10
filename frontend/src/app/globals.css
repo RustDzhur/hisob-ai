@@ -166,3 +166,6 @@ details summary { cursor: pointer; color: var(--blue-600); font-size: 12px; marg
 
 .lang-switch { min-height: 32px; padding: 0 8px; font: inherit; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); }
 .auth-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
+.badge-muted { background: #eef1f6; color: #4b576d; }
+.nav-section { margin: 16px 12px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-muted); }

@@ -2,6 +2,7 @@ from alembic import context
 from sqlalchemy import create_engine
 
 from app.modules.audit import models as _audit  # noqa: F401
+from app.modules.catalog import models as _catalog  # noqa: F401
 from app.modules.identity import models as _identity  # noqa: F401
 from app.modules.rbac import models as _rbac  # noqa: F401
 from app.modules.tenancy import models as _tenancy  # noqa: F401
