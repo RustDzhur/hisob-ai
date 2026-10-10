@@ -540,6 +540,8 @@ def test_database_enforces_balance_immutability_and_period_rules(
     owner, org = setup_org(new_client)
     a, b = two_accounts(owner, org)
     e = post(owner, org, "2026-10-05", [(a, "10", "0"), (b, "0", "10")]).json()
+    # admin_engine работает в AUTOCOMMIT: для проверки отложенных ограничений нужна настоящая транзакция
+    tx_engine = admin_engine.execution_options(isolation_level="READ COMMITTED")
     with admin_engine.connect() as c:
         user = str(c.execute(text("SELECT created_by FROM journal_entry LIMIT 1")).scalar_one())
         period = str(c.execute(text("SELECT id FROM accounting_period LIMIT 1")).scalar_one())
@@ -555,7 +557,7 @@ def test_database_enforces_balance_immutability_and_period_rules(
         with pytest.raises(DBAPIError, match="permission denied"), app_engine.begin() as c:
             c.execute(text(sql))
     # несбалансированная запись, вставленная в обход приложения, не проходит при фиксации транзакции
-    with pytest.raises(DBAPIError, match="not balanced"), admin_engine.begin() as c:
+    with pytest.raises(DBAPIError, match="not balanced"), tx_engine.begin() as c:
         eid = _raw_entry(c, org, user, period, date(2026, 10, 7), 900)
         c.execute(
             text(
@@ -565,7 +567,7 @@ def test_database_enforces_balance_immutability_and_period_rules(
         )
     # обе стороны в одной строке и нулевая строка
     for dr, cr in (("5", "5"), ("0", "0"), ("-1", "0")):
-        with pytest.raises(DBAPIError), admin_engine.begin() as c:
+        with pytest.raises(DBAPIError), tx_engine.begin() as c:
             eid = _raw_entry(c, org, user, period, date(2026, 10, 7), 901)
             c.execute(
                 text(
@@ -574,10 +576,10 @@ def test_database_enforces_balance_immutability_and_period_rules(
                 {"o": org, "e": eid, "a": a, "d": dr, "c": cr},
             )
     # дата вне периода и закрытый период
-    with pytest.raises(DBAPIError, match="outside"), admin_engine.begin() as c:
+    with pytest.raises(DBAPIError, match="outside"), tx_engine.begin() as c:
         _raw_entry(c, org, user, period, date(2026, 11, 7), 902)
     owner.post(base(org) + f"/periods/{period}/close", headers=h(owner))
-    with pytest.raises(DBAPIError, match="closed"), admin_engine.begin() as c:
+    with pytest.raises(DBAPIError, match="closed"), tx_engine.begin() as c:
         _raw_entry(c, org, user, period, date(2026, 10, 7), 903)
     with admin_engine.connect() as c:
         assert c.execute(text("SELECT count(*) FROM journal_entry")).scalar_one() == 1

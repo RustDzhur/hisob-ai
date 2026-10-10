@@ -110,7 +110,7 @@ test("бухгалтерия: план счетов, проводка с кон�
   await o.page.getByLabel("Дебет 1").fill("5");
   await o.page.getByLabel("Кредит 2").fill("5");
   await o.page.getByRole("button", { name: "Провести" }).click();
-  await expect(o.page.getByText("Период закрыт: проводку сделать нельзя.")).toBeVisible();
+  await expect(o.page.getByText("Период закрыт: проводку сделать нельзя.").first()).toBeVisible();
   await o.ctx.close();
 });
 

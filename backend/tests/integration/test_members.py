@@ -58,6 +58,9 @@ def test_invite_preview_accept_flow(new_client: NewClient, admin_engine: Engine)
     joined = accept(invitee, token)
     assert joined.status_code == 200 and joined.json()["role"] == "accountant"
     assert joined.json()["permissions"] == [
+        "accounting.manage",
+        "accounting.post",
+        "accounting.read",
         "catalog.manage",
         "catalog.read",
         "documents.approve",

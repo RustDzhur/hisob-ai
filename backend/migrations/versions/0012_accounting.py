@@ -201,6 +201,22 @@ def upgrade() -> None:
         "CREATE CONSTRAINT TRIGGER journal_line_balanced AFTER INSERT ON journal_line "
         "DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION journal_entry_balanced()"
     )
+    # 2б. Проводка без строк недопустима (проверка в конце транзакции).
+    op.execute(
+        """
+        CREATE FUNCTION journal_entry_has_lines() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM journal_line WHERE entry_id = NEW.id) THEN
+                RAISE EXCEPTION 'journal entry has no lines';
+            END IF;
+            RETURN NULL;
+        END $$
+        """
+    )
+    op.execute(
+        "CREATE CONSTRAINT TRIGGER journal_entry_lines AFTER INSERT ON journal_entry "
+        "DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION journal_entry_has_lines()"
+    )
     # 3. Закрытый период и дата вне периода: запись невозможна даже в обход приложения.
     op.execute(
         """
@@ -255,6 +271,7 @@ def downgrade() -> None:
         "account",
     ):
         op.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
+    op.execute("DROP FUNCTION IF EXISTS journal_entry_has_lines()")
     op.execute("DROP FUNCTION IF EXISTS journal_entry_period_check()")
     op.execute("DROP FUNCTION IF EXISTS journal_entry_balanced()")
     op.execute("DROP FUNCTION IF EXISTS journal_immutable()")

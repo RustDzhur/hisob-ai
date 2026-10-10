@@ -553,7 +553,11 @@ def _insert_entry(
         created_by=principal.user.id,
     )
     db.add(e)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError as exc:  # параллельное сторно той же проводки (UNIQUE reverses_id)
+        db.rollback()
+        raise _fail(409, "entry_already_reversed", "Проводка уже сторнирована.") from exc
     for i, (aid, d, c, memo) in enumerate(lines, 1):
         db.add(
             JournalLine(
@@ -599,10 +603,9 @@ def reverse_entry(
     db: Session, principal: Principal, org_id: uuid.UUID, eid: uuid.UUID, data: EntryReverse
 ) -> EntryOut:
     authorize(db, principal, org_id, rbac.ACCOUNTING_POST)
+    # без FOR UPDATE: роли приложения не выдан UPDATE на журнал; двойное сторно исключает UNIQUE(reverses_id)
     orig = db.scalar(
-        select(JournalEntry)
-        .where(JournalEntry.id == eid, JournalEntry.organization_id == org_id)
-        .with_for_update()
+        select(JournalEntry).where(JournalEntry.id == eid, JournalEntry.organization_id == org_id)
     )
     if orig is None:
         raise AppError(404, "not_found", "Проводка не найдена.")
