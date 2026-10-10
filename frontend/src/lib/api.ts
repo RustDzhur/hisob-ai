@@ -334,5 +334,14 @@ export type PostingRule = {
 export type PostingRuleItem = { id: string; rule_key: string; version: number; name: string; doc_type: string; status: string; effective_from: string | null; effective_to: string | null; approved_at: string | null };
 export type Proposal = {
   rule: { id: string; key: string; version: number; name: string }; legal_basis: string | null; entry_date: string | null; currency: string | null; description: string;
-  lines: { account_id: string; account_code: string; account_name: string; debit: string; credit: string; memo: string | null }[]; problems: string[]; posted_entry_id: string | null;
+  lines: { account_id: string; account_code: string; account_name: string; debit: string; credit: string; memo: string | null }[]; problems: string[]; warnings: string[]; posted_entry_id: string | null;
 };
+
+// ---------------- курсы валют и налоговые коды (срез 5.3) ----------------
+export type ExchangeRateRow = { id: string; currency: string; rate_date: string; nominal: number; rate: string; source: "manual" | "cbu"; source_ref: string | null; created_at: string };
+export type CbuImport = { rate_date: string; imported: string[]; skipped_existing: string[]; not_enabled: string[] };
+export type TaxCodeRow = {
+  id: string; code: string; name: string; kind: string; rate: string; effective_from: string | null; effective_to: string | null; source_url: string | null;
+  source_note: string | null; status: "DRAFT" | "CONFIRMED"; is_default: boolean; confirmed_by_name: string | null; confirmed_at: string | null;
+};
+export type BaseTrialBalance = TrialBalance & { complete: boolean; missing_rates: { currency: string; rate_date: string }[]; note: string };

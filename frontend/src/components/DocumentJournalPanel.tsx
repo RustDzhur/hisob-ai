@@ -64,6 +64,7 @@ export function DocumentJournalPanel({ orgId, docId, approved, canRead, canPost 
               </table>
             </div>
           ) : null}
+          {p.warnings.map((c) => <div key={c} className="issue issue-warning">{t.accounting.proposalWarnings[c] ?? c}</div>)}
           {p.problems.map((c) => <div key={c} className="issue issue-warning">{t.accounting.problems[c] ?? c}</div>)}
           {p.posted_entry_id ? (
             <p><span className="badge badge-ok">{t.accounting.docPosted}</span> <Link href={`/o/${orgId}/accounting/entries/${p.posted_entry_id}`}>{t.accounting.docOpenEntry}</Link></p>

@@ -3,14 +3,19 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Response
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
+from app.modules.accounting import refdata
 from app.modules.accounting import rules as rules_svc
 from app.modules.accounting import service as svc
 from app.modules.accounting.schemas import (
     AccountCreate,
     AccountOut,
     AccountUpdate,
+    BaseTrialBalanceOut,
+    CbuImportIn,
+    CbuImportOut,
     EntryCreate,
     EntryListItem,
     EntryOut,
@@ -20,11 +25,16 @@ from app.modules.accounting.schemas import (
     PeriodCreate,
     PeriodOut,
     ProposalOut,
+    RateIn,
+    RateOut,
     RuleApprove,
     RuleCreate,
     RuleListItem,
     RuleOut,
     RuleUpdate,
+    TaxCodeIn,
+    TaxCodeOut,
+    TaxCodeUpdate,
     TrialBalanceOut,
 )
 from app.modules.identity.deps import CurrentPrincipal
@@ -287,3 +297,136 @@ def post_from_document(
     org_id: uuid.UUID, body: FromDocumentIn, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
 ) -> EntryOut:
     return rules_svc.post_from_document(db, principal, org_id, body)
+
+
+# ---------------- курсы валют и налоговые коды (срез 5.3) ----------------
+
+
+@router.get("/rates", response_model=Page[RateOut])
+def list_rates(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    lq: ListParams,
+    currency: Annotated[str | None, Query(max_length=3)] = None,
+    date_from: Annotated[date | None, Query()] = None,
+    date_to: Annotated[date | None, Query()] = None,
+) -> Page[RateOut]:
+    return refdata.list_rates(
+        db, principal, org_id, lq, currency=currency, date_from=date_from, date_to=date_to
+    )
+
+
+@router.put("/rates", response_model=RateOut)
+def put_rate(
+    org_id: uuid.UUID, body: RateIn, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> RateOut:
+    return refdata.put_rate(db, principal, org_id, body)
+
+
+@router.post("/rates/import-cbu", response_model=CbuImportOut)
+def import_cbu(
+    org_id: uuid.UUID, body: CbuImportIn, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> CbuImportOut:
+    return refdata.import_cbu(db, principal, org_id, body)
+
+
+@router.get("/rates/lookup", response_model=RateOut)
+def lookup_rate(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    currency: Annotated[str, Query(min_length=3, max_length=3)],
+    on: Annotated[date, Query()],
+) -> RateOut:
+    return refdata.lookup_rate(db, principal, org_id, currency, on)
+
+
+@router.get("/tax-codes", response_model=list[TaxCodeOut])
+def list_tax_codes(
+    org_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession
+) -> list[TaxCodeOut]:
+    return refdata.list_tax_codes(db, principal, org_id)
+
+
+@router.post("/tax-codes", response_model=TaxCodeOut, status_code=201)
+def create_tax_code(
+    org_id: uuid.UUID, body: TaxCodeIn, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> TaxCodeOut:
+    return refdata.create_tax_code(db, principal, org_id, body)
+
+
+@router.post("/tax-codes/suggest-reference", response_model=TaxCodeOut, status_code=201)
+def suggest_tax_reference(
+    org_id: uuid.UUID, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> TaxCodeOut:
+    return refdata.suggest_reference(db, principal, org_id)
+
+
+@router.patch("/tax-codes/{tax_code_id}", response_model=TaxCodeOut)
+def update_tax_code(
+    org_id: uuid.UUID,
+    tax_code_id: uuid.UUID,
+    body: TaxCodeUpdate,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> TaxCodeOut:
+    return refdata.update_tax_code(db, principal, org_id, tax_code_id, body)
+
+
+@router.post("/tax-codes/{tax_code_id}/confirm", response_model=TaxCodeOut)
+def confirm_tax_code(
+    org_id: uuid.UUID,
+    tax_code_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> TaxCodeOut:
+    return refdata.confirm_tax_code(db, principal, org_id, tax_code_id)
+
+
+@router.post("/tax-codes/{tax_code_id}/set-default", response_model=TaxCodeOut)
+def set_default_tax_code(
+    org_id: uuid.UUID,
+    tax_code_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> TaxCodeOut:
+    return refdata.set_default_tax_code(db, principal, org_id, tax_code_id)
+
+
+@router.get("/reports/trial-balance-base", response_model=BaseTrialBalanceOut)
+def trial_balance_base(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: Annotated[date, Query()],
+    date_to: Annotated[date, Query()],
+) -> BaseTrialBalanceOut:
+    return refdata.base_trial_balance(db, principal, org_id, date_from=date_from, date_to=date_to)
+
+
+@router.get("/reports/trial-balance.csv", response_class=PlainTextResponse)
+def trial_balance_csv(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: Annotated[date, Query()],
+    date_to: Annotated[date, Query()],
+    currency: Annotated[str | None, Query(max_length=3)] = None,
+    base: Annotated[bool, Query()] = False,
+) -> PlainTextResponse:
+    text = refdata.trial_balance_csv(
+        db, principal, org_id, date_from=date_from, date_to=date_to, currency=currency, base=base
+    )
+    return PlainTextResponse(
+        "\ufeff" + text,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="trial-balance-{date_from}-{date_to}.csv"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

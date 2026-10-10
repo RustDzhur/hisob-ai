@@ -226,3 +226,68 @@ test("правила проводок на узбекском и английс�
   await expect(o.page.getByText(/No rules yet/)).toBeVisible();
   await o.ctx.close();
 });
+
+test("курсы валют, налоговый код и отчёт в базовой валюте", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const headers = { "X-CSRF-Token": csrf };
+  const base = `/api/v1/organizations/${o.orgId}`;
+  expect((await o.page.request.put(`${base}/currencies/USD`, { data: { enabled: true }, headers })).status()).toBe(200);
+  const cash = await apiJson(o, "post", "/accounting/accounts", { code: "1000", name: "Касса" });
+  const inc = await apiJson(o, "post", "/accounting/accounts", { code: "9000", name: "Доходы" });
+  const entry = (currency: string, amount: string) => ({
+    entry_date: "2026-10-06", currency, description: `Проводка ${currency}`,
+    lines: [{ account_id: cash.id, debit: amount, credit: "0" }, { account_id: inc.id, debit: "0", credit: amount }],
+  });
+  await apiJson(o, "post", "/accounting/entries", entry("UZS", "100"));
+  await apiJson(o, "post", "/accounting/entries", entry("USD", "10"));
+
+  // отчёт в базовой валюте без курса: честно «неполный»
+  await o.page.goto(`${o.orgUrl}/accounting/trial-balance`);
+  await o.page.getByLabel(/В базовой валюте/).check();
+  await expect(o.page.getByText("Отчёт неполный: нет курсов для части проводок.")).toBeVisible();
+
+  // курс вручную -> отчёт полный
+  await o.page.goto(`${o.orgUrl}/accounting/rates`);
+  await expect(o.page.getByText("Курсов пока нет.")).toBeVisible();
+  await expect(o.page.getByRole("button", { name: "Загрузить курсы ЦБ" })).toBeVisible(); // базовая валюта — сум
+  await o.page.getByLabel("Дата курса").first().fill("2026-10-05");
+  await o.page.getByLabel(/Курс \(в базовой валюте/).fill("12000,5");
+  await o.page.getByRole("button", { name: "Сохранить курс" }).click();
+  await expect(o.page.getByRole("cell", { name: "USD" })).toBeVisible();
+  await expect(o.page.getByRole("cell", { name: "Вручную", exact: true })).toBeVisible();
+  await o.page.goto(`${o.orgUrl}/accounting/trial-balance`);
+  await o.page.getByLabel(/В базовой валюте/).check();
+  await expect(o.page.getByText("Обороты дебета и кредита равны.")).toBeVisible();
+  await expect(o.page.getByText("Отчёт неполный")).toHaveCount(0);
+  await expect(o.page.getByText("Справочный пересчёт по курсу на дату проводки; не переоценка.")).toBeVisible();
+  const csv = await o.page.request.get(`${base}/accounting/reports/trial-balance.csv?date_from=2026-10-01&date_to=2026-10-31&base=true`);
+  expect(csv.status()).toBe(200);
+  expect(await csv.text()).toContain("120105.00");
+
+  // налоговый код: справочная запись — только черновик, пока бухгалтер не подтвердит
+  await o.page.goto(`${o.orgUrl}/accounting/taxes`);
+  await expect(o.page.getByText("Налоговых кодов пока нет.")).toBeVisible();
+  await o.page.getByRole("button", { name: "Добавить справочный НДС 12 %" }).click();
+  const row = o.page.getByRole("row", { name: /VAT-12/ });
+  await expect(row).toContainText("Черновик");
+  await expect(row).toContainText("Бухгалтер обязан проверить");
+  await row.getByRole("button", { name: "Подтвердить" }).click();
+  await expect(o.page.getByRole("row", { name: /VAT-12/ })).toContainText("Подтверждён");
+  await o.page.getByRole("row", { name: /VAT-12/ }).getByRole("button", { name: "Сделать основным" }).click();
+  await expect(o.page.getByRole("row", { name: /VAT-12/ })).toContainText("Основной");
+  await o.ctx.close();
+});
+
+test("курсы и налоги на узбекском и английском", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  await o.page.goto(`${o.orgUrl}/accounting/rates`);
+  await o.page.getByLabel("Язык").selectOption("uz");
+  await expect(o.page.getByRole("heading", { name: "Valyuta kurslari" })).toBeVisible();
+  await o.page.goto(`${o.orgUrl}/accounting/taxes`);
+  await expect(o.page.getByText("Hozircha soliq kodlari yoʻq.")).toBeVisible();
+  await o.page.getByLabel("Til").selectOption("en");
+  await expect(o.page.getByRole("heading", { name: "Tax codes" })).toBeVisible();
+  await expect(o.page.getByText("No tax codes yet.")).toBeVisible();
+  await o.ctx.close();
+});

@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.modules.accounting.models import Account, JournalEntry, PostingRule, PostingRuleLine
+from app.modules.accounting.refdata import tax_mismatch
 from app.modules.accounting.schemas import (
     EntryOut,
     FromDocumentIn,
@@ -585,8 +586,12 @@ def _proposal(
     if doc.currency and not enabled:
         problems.append("currency_not_enabled")
     description = f"{rule.name}: {doc.doc_type}" + (f" № {doc.number}" if doc.number else "")
+    warnings: list[str] = []
+    if tax_mismatch(db, org_id, doc.total_amount, doc.tax_total, d, doc.currency):
+        warnings.append("tax_rate_mismatch")
     return ProposalOut(
         rule=RuleRef(id=rule.id, key=rule.rule_key, version=rule.version, name=rule.name),
+        warnings=warnings,
         legal_basis=rule.legal_basis,
         entry_date=d,
         currency=doc.currency,

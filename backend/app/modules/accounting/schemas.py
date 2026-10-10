@@ -330,6 +330,9 @@ class ProposalOut(BaseModel):
     description: str
     lines: list[ProposalLine]
     problems: list[str]  # коды причин, по которым провести нельзя
+    warnings: list[
+        str
+    ] = []  # предупреждения, не блокирующие проведение (например, налог не сходится со ставкой)
     posted_entry_id: uuid.UUID | None  # уже проведено по этому правилу (и не сторнировано)
 
 
@@ -337,3 +340,103 @@ class FromDocumentIn(BaseModel):
     document_id: uuid.UUID
     rule_id: uuid.UUID
     entry_date: date | None = None
+
+
+# ---------------- курсы валют и налоговые коды (срез 5.3) ----------------
+
+Rate = Annotated[
+    Decimal,
+    BeforeValidator(_plain),
+    Field(gt=0, max_digits=20, decimal_places=6, allow_inf_nan=False),
+    AfterValidator(_fits),
+]
+Percent = Annotated[
+    Decimal,
+    BeforeValidator(_plain),
+    Field(ge=0, le=100, max_digits=7, decimal_places=4, allow_inf_nan=False),
+]
+
+
+class RateIn(BaseModel):
+    currency: Currency
+    rate_date: date
+    nominal: int = Field(default=1, ge=1, le=1_000_000)
+    rate: Rate
+
+
+class RateOut(BaseModel):
+    id: uuid.UUID
+    currency: str
+    rate_date: date
+    nominal: int
+    rate: str
+    source: str
+    source_ref: str | None
+    created_at: datetime
+
+
+class CbuImportIn(BaseModel):
+    rate_date: date
+
+
+class CbuImportOut(BaseModel):
+    rate_date: date
+    imported: list[str]
+    skipped_existing: list[str]
+    not_enabled: list[str]
+
+
+class TaxCodeIn(BaseModel):
+    code: Code
+    name: Name
+    rate: Percent
+    effective_from: date | None = None
+    effective_to: date | None = None
+    source_url: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = (
+        None
+    )
+    source_note: Notes = None
+
+
+class TaxCodeUpdate(BaseModel):
+    name: Name | None = None
+    rate: Percent | None = None
+    effective_from: date | None = None
+    effective_to: date | None = None
+    source_url: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=500)] = (
+        None
+    )
+    source_note: Notes = None
+
+
+class TaxCodeOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    name: str
+    kind: str
+    rate: str
+    effective_from: date | None
+    effective_to: date | None
+    source_url: str | None
+    source_note: str | None
+    status: str
+    is_default: bool
+    confirmed_by_name: str | None
+    confirmed_at: datetime | None
+
+
+class MissingRate(BaseModel):
+    currency: str
+    rate_date: date
+
+
+class BaseTrialBalanceOut(BaseModel):
+    currency: str  # базовая валюта организации
+    date_from: date
+    date_to: date
+    rows: list[TrialRow]
+    totals: TrialRow | None
+    balanced: bool
+    complete: bool  # False, если для каких-то проводок не нашлось курса
+    missing_rates: list[MissingRate]
+    note: str

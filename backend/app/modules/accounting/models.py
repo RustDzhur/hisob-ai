@@ -17,7 +17,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    false,
     func,
+    text,
     true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -244,3 +246,77 @@ class PostingRuleLine(Base):
     side: Mapped[str] = mapped_column(String(6))
     amount_source: Mapped[str] = mapped_column(String(20))
     memo: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ExchangeRate(Base):
+    """Курс валюты к базовой валюте организации на дату: вводится вручную или загружается с cbu.uz."""
+
+    __tablename__ = "exchange_rate"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "currency_code", "rate_date", name="uq_exchange_rate_day"
+        ),
+        Index("ix_exchange_rate_lookup", "organization_id", "currency_code", "rate_date"),
+        CheckConstraint("nominal > 0 AND rate > 0", name="positive"),
+        CheckConstraint("source IN ('manual', 'cbu')", name="source"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organization.id"))
+    currency_code: Mapped[str] = mapped_column(ForeignKey("currency.code"))
+    rate_date: Mapped[date] = mapped_column(Date)
+    nominal: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    rate: Mapped[Decimal] = mapped_column(Numeric(20, 6))
+    source: Mapped[str] = mapped_column(String(10))
+    source_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
+
+
+class TaxCode(Base):
+    """Налоговый код (пока только НДС): ставка и основание вводятся/подтверждаются бухгалтером."""
+
+    __tablename__ = "tax_code"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "code", name="uq_tax_code_org_code"),
+        Index(
+            "uq_tax_code_default",
+            "organization_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("is_default"),
+        ),
+        CheckConstraint("rate >= 0 AND rate <= 100", name="rate"),
+        CheckConstraint("kind IN ('vat')", name="kind"),
+        CheckConstraint("status IN ('DRAFT', 'CONFIRMED')", name="status"),
+        CheckConstraint(
+            "effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from",
+            name="dates",
+        ),
+        CheckConstraint(
+            "(status = 'CONFIRMED') = (confirmed_at IS NOT NULL AND confirmed_by IS NOT NULL)",
+            name="confirmed",
+        ),
+        CheckConstraint("NOT is_default OR status = 'CONFIRMED'", name="default_confirmed"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organization.id"))
+    code: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(10), default="vat", server_default="vat")
+    rate: Mapped[Decimal] = mapped_column(Numeric(7, 4))
+    effective_from: Mapped[date | None] = mapped_column(Date, nullable=True)
+    effective_to: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(10), default="DRAFT", server_default="DRAFT")
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    confirmed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )

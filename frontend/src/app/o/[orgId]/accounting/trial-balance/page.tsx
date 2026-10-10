@@ -4,8 +4,9 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AccountingTabs } from "@/components/AccountingTabs";
 import { Banner, Button, ErrorState, Skeleton } from "@/components/ui";
+import { fill } from "@/i18n/errors";
 import { useLocale, useT } from "@/i18n/LocaleProvider";
-import { api, toApiError, type ApiError, type Currency, type TrialBalance } from "@/lib/api";
+import { api, toApiError, type ApiError, type BaseTrialBalance, type Currency, type TrialBalance } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 import { useSession } from "@/lib/session";
 import Link from "next/link";
@@ -24,7 +25,8 @@ export default function TrialBalancePage() {
   const [to, setTo] = useState(iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)));
   const [currency, setCurrency] = useState("");
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [data, setData] = useState<TrialBalance | null>(null);
+  const [data, setData] = useState<(TrialBalance & Partial<BaseTrialBalance>) | null>(null);
+  const [inBase, setInBase] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,8 +44,9 @@ export default function TrialBalancePage() {
     setError(null);
     try {
       const qs = new URLSearchParams({ date_from: from, date_to: to });
-      if (cur) qs.set("currency", cur);
-      setData(await api<TrialBalance>(`/organizations/${orgId}/accounting/reports/trial-balance?${qs}`));
+      if (cur && !inBase) qs.set("currency", cur);
+      const path = inBase ? "trial-balance-base" : "trial-balance";
+      setData(await api<TrialBalance & Partial<BaseTrialBalance>>(`/organizations/${orgId}/accounting/reports/${path}?${qs}`));
     } catch (e) {
       setError(toApiError(e));
     } finally {
@@ -53,7 +56,7 @@ export default function TrialBalancePage() {
   useEffect(() => {
     if (canRead && currency) void run(currency);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRead, currency]);
+  }, [canRead, currency, inBase]);
 
   if (session.status !== "ready") return <Skeleton />;
   if (!canRead) return <div className="card"><h1>{t.catalog.noAccessTitle}</h1><p className="muted">{t.accounting.noAccessBody}</p></div>;
@@ -66,14 +69,23 @@ export default function TrialBalancePage() {
       <div className="toolbar">
         <label><span className="muted">{t.accounting.dateFrom} </span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
         <label><span className="muted">{t.accounting.dateTo} </span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
-        <select aria-label={t.accounting.fCurrency} value={currency} onChange={(e) => setCurrency(e.target.value)}>
+        <select aria-label={t.accounting.fCurrency} value={currency} disabled={inBase} onChange={(e) => setCurrency(e.target.value)}>
           {currencies.map((c) => <option key={c.code} value={c.code}>{c.code}</option>)}
         </select>
+        <label className="ack-row" style={{ margin: 0 }}>
+          <input type="checkbox" checked={inBase} onChange={(e) => setInBase(e.target.checked)} />
+          <span>{fill(t.accounting.showBase, { cur: org?.base_currency ?? "" })}</span>
+        </label>
         <Button variant="secondary" loading={loading} onClick={() => void run()}>{t.accounting.show}</Button>
+        <a className="btn btn-secondary" href={`/api/v1/organizations/${orgId}/accounting/reports/trial-balance.csv?${new URLSearchParams({ date_from: from, date_to: to, ...(inBase ? { base: "true" } : currency ? { currency } : {}) })}`}>{t.accounting.exportCsv}</a>
       </div>
       {error ? <ErrorState error={error} onRetry={() => void run()} /> : null}
       {data ? (
         <>
+          {data.complete === false ? (
+            <Banner>{t.accounting.incomplete} {fill(t.accounting.missingRates, { list: (data.missing_rates ?? []).map((m) => `${m.currency} ${m.rate_date}`).join(", ") })}</Banner>
+          ) : null}
+          {inBase ? <p className="hint">{t.accounting.baseNote}</p> : null}
           <Banner kind={data.balanced ? "info" : "error"}>{data.balanced ? t.accounting.trialBalanced : t.accounting.trialUnbalanced}</Banner>
           {data.rows.length === 0 ? <div className="card"><p className="muted">{t.accounting.emptyTrial}</p></div> : (
             <section className="card">
