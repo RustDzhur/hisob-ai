@@ -274,13 +274,14 @@ export type StockMovement = {
 };
 export type StockLine = { position: number; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string };
 export type StockOperation = {
-  id: string; kind: "receipt" | "issue" | "transfer"; status: "DRAFT" | "POSTED"; op_date: string; warehouse: NameRef;
+  id: string; kind: "receipt" | "issue" | "transfer" | "supplier_return" | "customer_return"; status: "DRAFT" | "POSTED"; op_date: string; warehouse: NameRef;
   to_warehouse: NameRef | null; reference: string | null; notes: string | null; version: number; lines: StockLine[];
+  source_document: { id: string; number: string | null; doc_type: string } | null; reverses_id: string | null; reversed_by_id: string | null;
   created_by_name: string | null; posted_by_name: string | null; posted_at: string | null; created_at: string; updated_at: string;
 };
 export type StockOperationItem = {
   id: string; kind: string; status: string; op_date: string; warehouse_name: string; to_warehouse_name: string | null;
-  reference: string | null; lines_count: number; created_at: string;
+  reference: string | null; lines_count: number; is_reversal: boolean; reversed: boolean; created_at: string;
 };
 export type Reconciliation = {
   ok: boolean; checked_pairs: number;

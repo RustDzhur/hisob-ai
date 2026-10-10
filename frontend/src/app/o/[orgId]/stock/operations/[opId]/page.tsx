@@ -16,7 +16,7 @@ import { formatQuantity, normalizeMoneyInput } from "@/lib/money";
 import { useSession } from "@/lib/session";
 
 type LineForm = { product_id: string; label: string; quantity: string; unit?: string };
-type Form = { kind: "receipt" | "issue" | "transfer"; op_date: string; warehouse_id: string; to_warehouse_id: string; reference: string; notes: string; lines: LineForm[] };
+type Form = { kind: StockOperation["kind"]; op_date: string; warehouse_id: string; to_warehouse_id: string; reference: string; notes: string; lines: LineForm[] };
 
 const today = () => {
   const d = new Date();
@@ -51,7 +51,7 @@ export default function OperationPage() {
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [dlg, setDlg] = useState<"post" | "delete" | null>(null);
+  const [dlg, setDlg] = useState<"post" | "delete" | "reverse" | null>(null);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   const load = useCallback(async () => {
@@ -169,6 +169,21 @@ export default function OperationPage() {
     }
   }
 
+  async function reverse() {
+    if (!op) return;
+    setActionError(null);
+    setBusy("reverse");
+    try {
+      const rv = await api<StockOperation>(`/organizations/${orgId}/stock/operations/${op.id}/reverse`, { method: "POST", body: { expected_version: op.version } });
+      router.push(`/o/${orgId}/stock/operations/${rv.id}`);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setDlg(null);
+      setBusy(null);
+    }
+  }
+
   async function remove() {
     if (!op) return;
     setBusy("delete");
@@ -212,6 +227,7 @@ export default function OperationPage() {
             <Button disabled={dirty || incomplete} title={dirty ? t.stock.postSaveFirst : undefined} onClick={() => setDlg("post")}>{t.stock.post}</Button>
           ) : null}
           {op && !posted && canManage ? <Button variant="secondary" onClick={() => setDlg("delete")}>{t.stock.delete}</Button> : null}
+          {op && posted && canPost && !op.reverses_id && !op.reversed_by_id ? <Button variant="secondary" onClick={() => setDlg("reverse")}>{t.stock.reverse}</Button> : null}
         </div>
       </div>
       <StockTabs />
@@ -229,6 +245,13 @@ export default function OperationPage() {
         </Banner>
       ) : null}
       {posted ? <Banner kind="info">{t.stock.readOnly}</Banner> : null}
+      {op?.source_document ? (
+        <Banner kind="info">
+          {t.stock.sourceDocument}: <Link href={`/o/${orgId}/documents/${op.source_document.id}`}>{t.documents.types[op.source_document.doc_type] ?? op.source_document.doc_type}{op.source_document.number ? ` № ${op.source_document.number}` : ""}</Link>
+        </Banner>
+      ) : null}
+      {op?.reversed_by_id ? <Banner kind="info">{t.stock.reversedBanner} <Link href={`/o/${orgId}/stock/operations/${op.reversed_by_id}`}>{t.stock.openReversal}</Link></Banner> : null}
+      {op?.reverses_id ? <Banner kind="info">{t.stock.reversalBanner} <Link href={`/o/${orgId}/stock/operations/${op.reverses_id}`}>{t.stock.openOriginal}</Link></Banner> : null}
 
       <section className="card" aria-labelledby="op-h">
         <h2 id="op-h">{t.stock.opTitle}</h2>
@@ -302,6 +325,7 @@ export default function OperationPage() {
       </section>
 
       <ConfirmDialog open={dlg === "post"} title={t.stock.postTitle} body={t.stock.postBody} confirmLabel={t.stock.post} busy={busy === "post"} onCancel={() => setDlg(null)} onConfirm={() => void post()} />
+      <ConfirmDialog open={dlg === "reverse"} title={t.stock.reverseTitle} body={t.stock.reverseBody} confirmLabel={t.stock.reverse} busy={busy === "reverse"} onCancel={() => setDlg(null)} onConfirm={() => void reverse()} />
       <ConfirmDialog open={dlg === "delete"} title={t.stock.deleteTitle} body={t.stock.deleteBody} confirmLabel={t.stock.delete} busy={busy === "delete"} onCancel={() => setDlg(null)} onConfirm={() => void remove()} />
     </div>
   );

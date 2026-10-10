@@ -15,11 +15,13 @@ from typing import Any
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import SQLColumnExpression
 
 from app.modules.audit import service as audit
 from app.modules.catalog.models import Product, UnitOfMeasure
+from app.modules.documents.models import Document, DocumentLine
 from app.modules.identity.models import User
 from app.modules.identity.service import Principal
 from app.modules.inventory.models import (
@@ -31,6 +33,8 @@ from app.modules.inventory.models import (
 )
 from app.modules.inventory.schemas import (
     BalanceOut,
+    DocRef,
+    FromDocumentIn,
     MovementOut,
     NameRef,
     OperationCreate,
@@ -39,6 +43,7 @@ from app.modules.inventory.schemas import (
     OperationUpdate,
     ReconciliationOut,
     ReconciliationRow,
+    ReverseIn,
     StockLineIn,
     StockLineOut,
     StockSettings,
@@ -152,6 +157,11 @@ def _out(db: Session, op: StockOperation) -> OperationOut:
         )
     }
     names = _names(db, {op.created_by, op.posted_by})
+    doc = (
+        db.scalar(select(Document).where(Document.id == op.source_document_id))
+        if op.source_document_id
+        else None
+    )
     to_wh = wh.get(op.to_warehouse_id) if op.to_warehouse_id else None
     return OperationOut(
         id=op.id,
@@ -163,6 +173,11 @@ def _out(db: Session, op: StockOperation) -> OperationOut:
         reference=op.reference,
         notes=op.notes,
         version=op.version,
+        source_document=DocRef(id=doc.id, number=doc.number, doc_type=doc.doc_type)
+        if doc
+        else None,
+        reverses_id=op.reverses_id,
+        reversed_by_id=op.reversed_by_id,
         lines=[
             StockLineOut(
                 position=ln.position,
@@ -189,8 +204,13 @@ def _validate(
     warehouse_id: uuid.UUID,
     to_warehouse_id: uuid.UUID | None,
     lines: list[StockLineIn],
+    *,
+    reversal: bool = False,
 ) -> None:
-    """Ссылки на склады и товары: свои, не архивные, товары — не услуги."""
+    """Ссылки на склады и товары: свои, не архивные, товары — не услуги.
+
+    Для сторно архивность товара не проверяется (возвращаем прежнее состояние), склада — проверяется.
+    """
     if kind == "transfer":
         if to_warehouse_id is None:
             raise _fail(
@@ -237,7 +257,7 @@ def _validate(
                 field,
                 position=i,
             )
-        if p.archived_at is not None:
+        if p.archived_at is not None and not reversal:
             raise _fail(422, "product_archived", "Товар в архиве.", field, position=i)
 
 
@@ -262,6 +282,7 @@ def _replace_lines(
 
 def _snapshot(op: StockOperation, lines: int) -> dict[str, Any]:
     return {
+        "source_document_id": str(op.source_document_id) if op.source_document_id else None,
         "kind": op.kind,
         "status": op.status,
         "op_date": op.op_date.isoformat(),
@@ -289,6 +310,7 @@ def list_operations(
     status: str,
     kind: str | None,
     warehouse_id: uuid.UUID | None,
+    document_id: uuid.UUID | None = None,
 ) -> Page[OperationListItem]:
     authorize(db, principal, org_id, rbac.STOCK_READ)
     stmt = select(StockOperation).where(StockOperation.organization_id == org_id)
@@ -296,6 +318,8 @@ def list_operations(
         stmt = stmt.where(StockOperation.status == status)
     if kind:
         stmt = stmt.where(StockOperation.kind == kind)
+    if document_id:
+        stmt = stmt.where(StockOperation.source_document_id == document_id)
     if warehouse_id:
         stmt = stmt.where(
             (StockOperation.warehouse_id == warehouse_id)
@@ -334,6 +358,8 @@ def list_operations(
                 to_warehouse_name=wh.get(r.to_warehouse_id) if r.to_warehouse_id else None,
                 reference=r.reference,
                 lines_count=int(counts.get(r.id, 0)),
+                is_reversal=r.reverses_id is not None,
+                reversed=r.reversed_by_id is not None,
                 created_at=r.created_at,
             )
             for r in rows
@@ -509,19 +535,46 @@ def post_operation(
         [StockLineIn(product_id=ln.product_id, quantity=ln.quantity) for ln in lines],
     )
 
+    _apply_posting(db, principal, acc, op, lines, reverse=False)
+    db.commit()
+    return _out(db, op)
+
+
+def _legs(
+    kind: str, wh: uuid.UUID, to: uuid.UUID | None, qty: Decimal, reverse: bool
+) -> list[tuple[uuid.UUID, Decimal]]:
+    """Изменения по складам для одной строки. Приход и возврат от клиента увеличивают, расход и возврат
+    поставщику уменьшают; перемещение — с одного склада на другой. Сторно меняет знаки."""
+    legs: list[tuple[uuid.UUID, Decimal]]
+    if kind in ("receipt", "customer_return"):
+        legs = [(wh, qty)]
+    elif kind in ("issue", "supplier_return"):
+        legs = [(wh, -qty)]
+    else:  # transfer
+        assert to is not None
+        legs = [(wh, -qty), (to, qty)]
+    return [(w, -d) for w, d in legs] if reverse else legs
+
+
+def _apply_posting(
+    db: Session,
+    principal: Principal,
+    acc: Any,
+    op: StockOperation,
+    lines: list[StockOperationLine],
+    *,
+    reverse: bool,
+) -> None:
+    """Единый путь проведения (обычного и сторно): блокировка остатков, проверка нехватки, движения, статус.
+
+    Коммит выполняет вызывающий вместе с остальными изменениями той же транзакции.
+    """
+    org_id = op.organization_id
     # изменения по парам (склад, товар); для движений — построчно, для остатков — суммарно
     movements: list[tuple[uuid.UUID, uuid.UUID, Decimal]] = []
     totals: dict[tuple[uuid.UUID, uuid.UUID], Decimal] = defaultdict(Decimal)
     for ln in lines:
-        legs: list[tuple[uuid.UUID, Decimal]]
-        if op.kind == "receipt":
-            legs = [(op.warehouse_id, ln.quantity)]
-        elif op.kind == "issue":
-            legs = [(op.warehouse_id, -ln.quantity)]
-        else:  # transfer
-            assert op.to_warehouse_id is not None
-            legs = [(op.warehouse_id, -ln.quantity), (op.to_warehouse_id, ln.quantity)]
-        for wid, delta in legs:
+        for wid, delta in _legs(op.kind, op.warehouse_id, op.to_warehouse_id, ln.quantity, reverse):
             movements.append((wid, ln.product_id, delta))
             totals[(wid, ln.product_id)] += delta
 
@@ -596,7 +649,121 @@ def post_operation(
     op.version += 1
     audit.record(
         db,
-        action="stock_operation.posted",
+        action="stock_operation.reversed" if reverse else "stock_operation.posted",
+        actor_user_id=principal.user.id,
+        organization_id=org_id,
+        object_type="stock_operation",
+        object_id=op.id,
+        after={
+            **_snapshot(op, len(lines)),
+            "reverses_id": str(op.reverses_id) if op.reverses_id else None,
+        },
+    )
+
+
+def _forbidden() -> AppError:
+    return AppError(403, "forbidden", "Недостаточно прав для этого действия.")
+
+
+def create_from_document(
+    db: Session, principal: Principal, org_id: uuid.UUID, data: FromDocumentIn
+) -> OperationOut:
+    """Черновик складской операции по строкам утверждённого документа. Сам не проводится: проводит человек.
+
+    Каждая строка должна быть готова к учёту: товар выбран, количество указано, единица совпадает
+    с единицей товара (пересчёта между единицами нет — единицу товара нужно привести к документу).
+    Строки-услуги в складской учёт не попадают.
+    """
+    acc = authorize(db, principal, org_id, rbac.STOCK_MANAGE)
+    if rbac.DOCUMENTS_READ not in acc.permissions:
+        raise _forbidden()
+    doc = db.scalar(
+        select(Document)
+        .where(Document.id == data.document_id, Document.organization_id == org_id)
+        .with_for_update()
+    )
+    if doc is None:
+        raise AppError(404, "not_found", "Документ не найден.")
+    if doc.status != "APPROVED":
+        raise _fail(
+            409,
+            "document_not_approved",
+            "Складскую операцию можно оформить только по утверждённому документу.",
+        )
+    rows = db.execute(
+        select(DocumentLine, Product)
+        .outerjoin(
+            Product,
+            (Product.id == DocumentLine.product_id)
+            & (Product.organization_id == DocumentLine.organization_id),
+        )
+        .where(DocumentLine.document_id == doc.id)
+        .order_by(DocumentLine.position)
+    ).all()
+    problems: list[dict[str, Any]] = []
+    lines: list[StockLineIn] = []
+    for ln, p in rows:
+        pos = ln.position
+        field = f"lines.{pos}"
+        if p is not None and p.kind == "service":
+            continue  # услуги не участвуют в складском учёте
+        if p is None:
+            problems.append(
+                _problem("line_product_missing", "Выберите товар в строке документа.", field, pos)
+            )
+        elif ln.quantity is None or ln.quantity <= 0:
+            problems.append(
+                _problem(
+                    "line_quantity_missing", "Укажите количество в строке документа.", field, pos
+                )
+            )
+        elif ln.unit_id is not None and ln.unit_id != p.unit_id:
+            problems.append(
+                _problem(
+                    "line_unit_mismatch",
+                    "Единица в строке отличается от единицы товара: приведите единицу товара к документу.",
+                    field,
+                    pos,
+                    sku=str(p.sku),
+                )
+            )
+        else:
+            lines.append(StockLineIn(product_id=p.id, quantity=ln.quantity))
+    if problems:
+        raise AppError(
+            422,
+            "document_lines_not_ready",
+            "Строки документа не готовы к складскому учёту.",
+            problems,
+        )
+    if not lines:
+        raise _fail(422, "no_stock_lines", "В документе нет товарных строк для складского учёта.")
+    _validate(db, org_id, data.kind, data.warehouse_id, None, lines)
+    op = StockOperation(
+        id=new_id(),
+        organization_id=org_id,
+        kind=data.kind,
+        status="DRAFT",
+        op_date=data.op_date or doc.doc_date or utcnow().date(),
+        warehouse_id=data.warehouse_id,
+        reference=doc.number,
+        source_document_id=doc.id,
+        created_by=principal.user.id,
+    )
+    db.add(op)
+    try:
+        db.flush()
+    except IntegrityError as exc:  # гонка или повтор: по документу уже есть операция этого вида
+        db.rollback()
+        raise _fail(
+            409,
+            "document_already_in_stock",
+            "По этому документу уже оформлена такая складская операция.",
+        ) from exc
+    _replace_lines(db, org_id, op.id, lines)
+    audit.record(
+        db,
+        action="stock_operation.created_from_document",
         actor_user_id=principal.user.id,
         organization_id=org_id,
         object_type="stock_operation",
@@ -605,6 +772,84 @@ def post_operation(
     )
     db.commit()
     return _out(db, op)
+
+
+def _problem(code: str, message: str, field: str, position: int, **params: Any) -> dict[str, Any]:
+    return {
+        "field": field,
+        "code": code,
+        "message": message,
+        "params": {"position": position, **params},
+    }
+
+
+def reverse_operation(
+    db: Session, principal: Principal, org_id: uuid.UUID, oid: uuid.UUID, data: ReverseIn
+) -> OperationOut:
+    """Сторно: новая проведённая операция с противоположными движениями; исходная остаётся в истории."""
+    acc = authorize(db, principal, org_id, rbac.STOCK_POST)
+    orig = _load(db, org_id, oid, lock=True)
+    if orig.version != data.expected_version:
+        raise _conflict()
+    if orig.status != "POSTED":
+        raise AppError(
+            409, "operation_not_posted", "Сторнировать можно только проведённую операцию."
+        )
+    if orig.reverses_id is not None:
+        raise AppError(409, "operation_is_reversal", "Сторно-операцию сторнировать нельзя.")
+    if orig.reversed_by_id is not None:
+        raise AppError(409, "operation_already_reversed", "Операция уже сторнирована.")
+    src_lines = list(
+        db.scalars(
+            select(StockOperationLine)
+            .where(StockOperationLine.operation_id == orig.id)
+            .order_by(StockOperationLine.position)
+        )
+    )
+    _validate(
+        db,
+        org_id,
+        orig.kind,
+        orig.warehouse_id,
+        orig.to_warehouse_id,
+        [StockLineIn(product_id=ln.product_id, quantity=ln.quantity) for ln in src_lines],
+        reversal=True,
+    )
+    rev = StockOperation(
+        id=new_id(),
+        organization_id=org_id,
+        kind=orig.kind,
+        status="POSTED",  # ограничения БД: сторно существует только проведённым
+        posted_by=principal.user.id,
+        posted_at=utcnow(),
+        op_date=data.op_date or utcnow().date(),
+        warehouse_id=orig.warehouse_id,
+        to_warehouse_id=orig.to_warehouse_id,
+        reference=orig.reference,
+        notes=None,
+        reverses_id=orig.id,
+        created_by=principal.user.id,
+    )
+    db.add(rev)
+    db.flush()
+    rev_lines = [
+        StockOperationLine(
+            id=new_id(),
+            organization_id=org_id,
+            operation_id=rev.id,
+            position=ln.position,
+            product_id=ln.product_id,
+            quantity=ln.quantity,
+        )
+        for ln in src_lines
+    ]
+    db.add_all(rev_lines)
+    db.flush()
+    _apply_posting(db, principal, acc, rev, rev_lines, reverse=True)
+    orig.reversed_by_id = rev.id
+    orig.version += 1
+    db.commit()
+    return _out(db, rev)
 
 
 # ---------------- остатки, движения, сверка ----------------

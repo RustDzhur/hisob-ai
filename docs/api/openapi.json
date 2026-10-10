@@ -711,6 +711,37 @@
         "title": "CurrencyToggle",
         "type": "object"
       },
+      "DocRef": {
+        "properties": {
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "doc_type"
+        ],
+        "title": "DocRef",
+        "type": "object"
+      },
       "DocumentListItem": {
         "properties": {
           "counterparty_name": {
@@ -1425,6 +1456,50 @@
         "title": "FileOut",
         "type": "object"
       },
+      "FromDocumentIn": {
+        "description": "Складская операция по утверждённому документу; направление выбирает человек.",
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "receipt",
+              "issue",
+              "supplier_return",
+              "customer_return"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "op_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Op Date"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "kind",
+          "warehouse_id"
+        ],
+        "title": "FromDocumentIn",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2124,7 +2199,9 @@
             "enum": [
               "receipt",
               "issue",
-              "transfer"
+              "transfer",
+              "supplier_return",
+              "customer_return"
             ],
             "title": "Kind",
             "type": "string"
@@ -2206,6 +2283,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_reversal": {
+            "title": "Is Reversal",
+            "type": "boolean"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -2229,6 +2310,10 @@
               }
             ],
             "title": "Reference"
+          },
+          "reversed": {
+            "title": "Reversed",
+            "type": "boolean"
           },
           "status": {
             "title": "Status",
@@ -2259,6 +2344,8 @@
           "to_warehouse_name",
           "reference",
           "lines_count",
+          "is_reversal",
+          "reversed",
           "created_at"
         ],
         "title": "OperationListItem",
@@ -2348,6 +2435,40 @@
             ],
             "title": "Reference"
           },
+          "reversed_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reversed By Id"
+          },
+          "reverses_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reverses Id"
+          },
+          "source_document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -2385,6 +2506,9 @@
           "reference",
           "notes",
           "version",
+          "source_document",
+          "reverses_id",
+          "reversed_by_id",
           "lines",
           "created_by_name",
           "posted_by_name",
@@ -3301,6 +3425,33 @@
           "reason"
         ],
         "title": "RejectIn",
+        "type": "object"
+      },
+      "ReverseIn": {
+        "description": "Сторно проведённой операции. Дата по умолчанию — сегодня.",
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "op_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Op Date"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "ReverseIn",
         "type": "object"
       },
       "RoleOut": {
@@ -7026,7 +7177,9 @@
                   "enum": [
                     "receipt",
                     "issue",
-                    "transfer"
+                    "transfer",
+                    "supplier_return",
+                    "customer_return"
                   ],
                   "type": "string"
                 },
@@ -7052,6 +7205,23 @@
                 }
               ],
               "title": "Warehouse Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "document_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Document Id"
             }
           },
           {
@@ -7207,6 +7377,59 @@
           }
         },
         "summary": "Create Operation",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/stock/operations/from-document": {
+      "post": {
+        "operationId": "create_from_document_api_v1_organizations__org_id__stock_operations_from_document_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FromDocumentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create From Document",
         "tags": [
           "stock"
         ]
@@ -7438,6 +7661,69 @@
           }
         },
         "summary": "Post Operation",
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/stock/operations/{operation_id}/reverse": {
+      "post": {
+        "operationId": "reverse_operation_api_v1_organizations__org_id__stock_operations__operation_id__reverse_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Operation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reverse Operation",
         "tags": [
           "stock"
         ]

@@ -8,6 +8,7 @@ from app.modules.identity.deps import CurrentPrincipal
 from app.modules.inventory import stock as svc
 from app.modules.inventory.schemas import (
     BalanceOut,
+    FromDocumentIn,
     MovementOut,
     OperationAction,
     OperationCreate,
@@ -15,6 +16,7 @@ from app.modules.inventory.schemas import (
     OperationOut,
     OperationUpdate,
     ReconciliationOut,
+    ReverseIn,
     StockSettings,
 )
 from app.platform.csrf import require_csrf
@@ -80,11 +82,22 @@ def list_operations(
     db: DbSession,
     lq: ListParams,
     status: Annotated[Literal["all", "DRAFT", "POSTED"], Query()] = "all",
-    kind: Annotated[Literal["receipt", "issue", "transfer"] | None, Query()] = None,
+    kind: Annotated[
+        Literal["receipt", "issue", "transfer", "supplier_return", "customer_return"] | None,
+        Query(),
+    ] = None,
     warehouse_id: Annotated[uuid.UUID | None, Query()] = None,
+    document_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> Page[OperationListItem]:
     return svc.list_operations(
-        db, principal, org_id, lq, status=status, kind=kind, warehouse_id=warehouse_id
+        db,
+        principal,
+        org_id,
+        lq,
+        status=status,
+        kind=kind,
+        warehouse_id=warehouse_id,
+        document_id=document_id,
     )
 
 
@@ -141,3 +154,26 @@ def post_operation(
     db: DbSession,
 ) -> OperationOut:
     return svc.post_operation(db, principal, org_id, operation_id, body.expected_version)
+
+
+@router.post("/operations/from-document", response_model=OperationOut, status_code=201)
+def create_from_document(
+    org_id: uuid.UUID,
+    body: FromDocumentIn,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> OperationOut:
+    return svc.create_from_document(db, principal, org_id, body)
+
+
+@router.post("/operations/{operation_id}/reverse", response_model=OperationOut)
+def reverse_operation(
+    org_id: uuid.UUID,
+    operation_id: uuid.UUID,
+    body: ReverseIn,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> OperationOut:
+    return svc.reverse_operation(db, principal, org_id, operation_id, body)

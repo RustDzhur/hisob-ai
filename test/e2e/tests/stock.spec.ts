@@ -170,3 +170,81 @@ test("склад на узбекском и английском", async ({ brow
   await expect(o.page.getByText("No balances yet. Record a receipt.")).toBeVisible();
   await o.ctx.close();
 });
+
+const pdf = (tag: string) => Buffer.from(`%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n%${tag}\n`);
+
+const cpCache = new Map<string, { id: string }>();
+
+async function approvedDocument(o: Org, productId: string, unitId: string, quantity: string) {
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const headers = { "X-CSRF-Token": csrf };
+  const base = `/api/v1/organizations/${o.orgId}`;
+  const cp = cpCache.get(o.orgId) ?? (await apiPost(o, "/counterparties", { name: "ООО Поставщик", tin: "123456789" }));
+  cpCache.set(o.orgId, cp);
+  const up = await o.page.request.post(`${base}/documents`, {
+    multipart: { file: { name: "inv.pdf", mimeType: "application/pdf", buffer: pdf(uniq()) }, doc_type: "invoice" },
+    headers,
+  });
+  expect(up.status()).toBe(201);
+  const doc = await up.json();
+  const amount = String(Number(quantity) * 100);
+  const patch = await o.page.request.patch(`${base}/documents/${doc.id}`, {
+    headers,
+    data: {
+      expected_version: doc.version, doc_type: "invoice", number: `НАК-${uniq()}`, doc_date: "2026-10-01", counterparty_id: cp.id,
+      currency: "UZS", total_amount: amount,
+      lines: [{ description: "Молоко", product_id: productId, unit_id: unitId, quantity, unit_price: "100", amount }],
+    },
+  });
+  expect(patch.status()).toBe(200);
+  const ok = await o.page.request.post(`${base}/documents/${doc.id}/approve`, { headers, data: { expected_version: (await patch.json()).version, acknowledged: [] } });
+  expect(ok.status()).toBe(200);
+  return doc.id as string;
+}
+
+async function seedWithIds(o: Org) {
+  const units = await (await o.page.request.get(`/api/v1/organizations/${o.orgId}/units`)).json();
+  const pcs = units.find((u: { code: string }) => u.code === "pcs").id;
+  const kg = units.find((u: { code: string }) => u.code === "kg").id;
+  await apiPost(o, "/warehouses", { name: "Основной склад" });
+  const product = await apiPost(o, "/products", { kind: "goods", sku: "MILK-1", name: "Молоко 3%", unit_id: pcs, barcodes: [] });
+  return { pcs, kg, productId: product.id as string };
+}
+
+test("склад по документу: оформление, проведение, сторно; несовпадение единиц объясняется", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  const { pcs, kg, productId } = await seedWithIds(o);
+
+  // документ в килограммах при товаре в штуках: понятная причина, ничего не создаётся
+  const bad = await approvedDocument(o, productId, kg, "5");
+  await o.page.goto(`${o.orgUrl}/documents/${bad}`);
+  await o.page.getByRole("button", { name: "Оформить складскую операцию" }).click();
+  await o.page.getByLabel("Склад", { exact: true }).selectOption({ label: "Основной склад" });
+  await o.page.getByRole("button", { name: "Создать черновик" }).click();
+  await expect(o.page.getByText(/Строка 1: единица в документе отличается от единицы товара MILK-1/)).toBeVisible();
+
+  // подходящий документ: черновик по документу -> проведение -> сторно
+  const good = await approvedDocument(o, productId, pcs, "8");
+  await o.page.goto(`${o.orgUrl}/documents/${good}`);
+  await expect(o.page.getByText("По документу складских операций ещё нет.")).toBeVisible();
+  await o.page.getByRole("button", { name: "Оформить складскую операцию" }).click();
+  await o.page.getByLabel("Склад", { exact: true }).selectOption({ label: "Основной склад" });
+  await o.page.getByRole("button", { name: "Создать черновик" }).click();
+  await expect(o.page).toHaveURL(/\/stock\/operations\/[0-9a-f-]{36}$/);
+  await expect(o.page.getByText(/Документ-основание/)).toBeVisible();
+  await o.page.getByRole("button", { name: "Провести", exact: true }).click();
+  await o.page.getByRole("dialog").getByRole("button", { name: "Провести" }).click();
+  await expect(o.page.getByRole("heading", { name: /Приход/ })).toContainText("Проведена");
+
+  await o.page.getByRole("button", { name: "Сторнировать" }).click();
+  await o.page.getByRole("dialog").getByRole("button", { name: "Сторнировать" }).click();
+  await expect(o.page.getByText("Это сторно другой операции.")).toBeVisible();
+  await expect(o.page.getByRole("button", { name: "Сторнировать" })).toHaveCount(0);
+
+  await o.page.goto(`${o.orgUrl}/stock/operations`);
+  await expect(o.page.getByText("Сторнирована")).toBeVisible();
+  await expect(o.page.getByText("Сторно", { exact: true }).first()).toBeVisible();
+  await o.page.goto(`${o.orgUrl}/stock`);
+  await expect(o.page.getByText("Остатков пока нет. Оформите приход.")).toBeVisible(); // остаток вернулся к нулю
+  await o.ctx.close();
+});

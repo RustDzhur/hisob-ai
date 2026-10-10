@@ -63,7 +63,13 @@ export function OperationsView() {
 
   const columns: Column<StockOperationItem>[] = [
     { key: "date", header: t.stock.colDate, sortKey: "op_date", render: (o) => <Link href={`/o/${orgId}/stock/operations/${o.id}`}>{dateOnly(o.op_date)}</Link> },
-    { key: "kind", header: t.stock.colKind, render: (o) => t.stock.kinds[o.kind] ?? o.kind },
+    { key: "kind", header: t.stock.colKind, render: (o) => (
+      <>
+        {t.stock.kinds[o.kind] ?? o.kind}
+        {o.is_reversal ? <> <span className="badge badge-muted">{t.stock.reversalBadge}</span></> : null}
+        {o.reversed ? <> <span className="badge badge-muted">{t.stock.reversedBadge}</span></> : null}
+      </>
+    ) },
     { key: "wh", header: t.stock.colWarehouse, render: (o) => (o.to_warehouse_name ? `${o.warehouse_name} → ${o.to_warehouse_name}` : o.warehouse_name) },
     { key: "ref", header: t.stock.colReference, render: (o) => o.reference ?? "—" },
     { key: "lines", header: t.stock.colLines, render: (o) => o.lines_count },

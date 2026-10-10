@@ -4,7 +4,7 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, exists, func, or_, select
+from sqlalchemy import delete, exists, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import SQLColumnExpression
@@ -302,6 +302,21 @@ def update_product(
     new_unit = data.unit_id if "unit_id" in sent and data.unit_id else p.unit_id
     if new_unit != p.unit_id:
         _unit(db, org_id, new_unit)
+        # Складские количества хранятся в единице товара: смена единицы при наличии движений
+        # молча изменила бы смысл остатков (таблица stock_movement читается напрямую, чтобы не
+        # нарушать слои модулей).
+        if db.execute(
+            text(
+                "SELECT 1 FROM stock_movement WHERE organization_id = :o AND product_id = :p LIMIT 1"
+            ),
+            {"o": org_id, "p": p.id},
+        ).first():
+            raise _field_error(
+                409,
+                "product_unit_locked",
+                "unit_id",
+                "Единицу нельзя изменить: по товару уже есть складские движения.",
+            )
     if "price" in sent or "price_currency" in sent:
         price = data.price if "price" in sent else p.price
         currency = data.price_currency if "price_currency" in sent else p.price_currency

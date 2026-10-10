@@ -16,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
@@ -77,7 +78,47 @@ class StockOperation(Base):
             ["warehouse.id", "warehouse.organization_id"],
             name="fk_stock_operation_to_warehouse",
         ),
+        ForeignKeyConstraint(
+            ["source_document_id", "organization_id"],
+            ["document.id", "document.organization_id"],
+            name="fk_stock_operation_document",
+        ),
+        ForeignKeyConstraint(
+            ["reverses_id", "organization_id"],
+            ["stock_operation.id", "stock_operation.organization_id"],
+            name="fk_stock_operation_reverses",
+        ),
+        ForeignKeyConstraint(
+            ["reversed_by_id", "organization_id"],
+            ["stock_operation.id", "stock_operation.organization_id"],
+            name="fk_stock_operation_reversed_by",
+        ),
         Index("ix_stock_operation_org_date", "organization_id", "op_date"),
+        Index("ix_stock_operation_document", "source_document_id"),
+        Index(
+            "uq_stock_operation_document_kind",
+            "organization_id",
+            "source_document_id",
+            "kind",
+            unique=True,
+            postgresql_where=text(
+                "source_document_id IS NOT NULL AND reversed_by_id IS NULL AND reverses_id IS NULL"
+            ),
+        ),
+        Index(
+            "uq_stock_operation_reverses",
+            "reverses_id",
+            unique=True,
+            postgresql_where=text("reverses_id IS NOT NULL"),
+        ),
+        CheckConstraint(
+            "(reverses_id IS NULL AND reversed_by_id IS NULL) OR status = 'POSTED'",
+            name="reversal_posted",
+        ),
+        CheckConstraint(
+            "reverses_id IS NULL OR (reversed_by_id IS NULL AND source_document_id IS NULL)",
+            name="reversal_exclusive",
+        ),
         CheckConstraint(f"kind IN ({_in(OP_KINDS)})", name="kind"),
         CheckConstraint("status IN ('DRAFT', 'POSTED')", name="status"),
         CheckConstraint("(kind = 'transfer') = (to_warehouse_id IS NOT NULL)", name="to_wh"),
@@ -99,6 +140,9 @@ class StockOperation(Base):
     to_warehouse_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     reference: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_document_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    reverses_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    reversed_by_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     posted_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)

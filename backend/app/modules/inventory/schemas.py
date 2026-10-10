@@ -58,7 +58,8 @@ class WarehouseOut(BaseModel):
 
 # ---------------- склад: операции, остатки, движения (срез 4.1) ----------------
 
-OpKind = Literal["receipt", "issue", "transfer"]  # остальные виды появятся в срезах 4.2–4.3
+OpKind = Literal["receipt", "issue", "transfer", "supplier_return", "customer_return"]
+# инвентаризационная корректировка появится в срезе 4.3
 
 
 def _no_float(v: Any) -> Any:
@@ -116,6 +117,28 @@ class OperationAction(BaseModel):
     expected_version: int = Field(ge=1)
 
 
+class ReverseIn(BaseModel):
+    """Сторно проведённой операции. Дата по умолчанию — сегодня."""
+
+    expected_version: int = Field(ge=1)
+    op_date: date | None = None
+
+
+class FromDocumentIn(BaseModel):
+    """Складская операция по утверждённому документу; направление выбирает человек."""
+
+    document_id: uuid.UUID
+    kind: Literal["receipt", "issue", "supplier_return", "customer_return"]
+    warehouse_id: uuid.UUID
+    op_date: date | None = None
+
+
+class DocRef(BaseModel):
+    id: uuid.UUID
+    number: str | None
+    doc_type: str
+
+
 class NameRef(BaseModel):
     id: uuid.UUID
     name: str
@@ -147,6 +170,9 @@ class OperationOut(BaseModel):
     reference: str | None
     notes: str | None
     version: int
+    source_document: DocRef | None
+    reverses_id: uuid.UUID | None
+    reversed_by_id: uuid.UUID | None
     lines: list[StockLineOut]
     created_by_name: str | None
     posted_by_name: str | None
@@ -164,6 +190,8 @@ class OperationListItem(BaseModel):
     to_warehouse_name: str | None
     reference: str | None
     lines_count: int
+    is_reversal: bool
+    reversed: bool
     created_at: datetime
 
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EntityPicker } from "@/components/EntityPicker";
+import { DocumentStockPanel } from "@/components/DocumentStockPanel";
 import { ExtractionPanel, type Suggestion } from "@/components/ExtractionPanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Banner, Button, ConfirmDialog, ErrorState, Field, Modal, Skeleton, TextArea } from "@/components/ui";
@@ -71,6 +72,8 @@ export default function DocumentPage() {
   const canRead = !!org?.permissions.includes("documents.read");
   const canReview = !!org?.permissions.includes("documents.review");
   const canApprove = !!org?.permissions.includes("documents.approve");
+  const canStockRead = !!org?.permissions.includes("stock.read");
+  const canStockManage = !!org?.permissions.includes("stock.manage");
 
   const [doc, setDoc] = useState<DocumentFull | null>(null);
   const [form, setForm] = useState<Form | null>(null);
@@ -334,6 +337,8 @@ export default function DocumentPage() {
               </div>
             ))}
           </section>
+
+          <DocumentStockPanel orgId={orgId} docId={doc.id} approved={doc.status === "APPROVED"} canRead={canStockRead} canManage={canStockManage} />
 
           <ExtractionPanel orgId={orgId} docId={doc.id} extraction={doc.extraction} canRun={canReview} editable={editable}
             suggestions={suggestions} onApply={applySuggestions} onDoc={onExtractionDoc}
