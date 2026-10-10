@@ -1,0 +1,904 @@
+{
+ "openai": {
+  "summary": {
+   "provider": "openai",
+   "model": "gpt-6-luna",
+   "documents_scored": 36,
+   "unsupported_input": 0,
+   "failed": 0,
+   "fields_total": 765,
+   "field_accuracy": "99.3%",
+   "manual_edit_rate_fields": "0.7%",
+   "docs_needing_edit": "3/36",
+   "wrong": 5,
+   "missed": 0,
+   "hallucinated": 0,
+   "high_conf_errors": 5,
+   "avg_conf_correct": 0.994,
+   "avg_conf_wrong": 0.99,
+   "latency_p50_s": 6.5,
+   "latency_max_s": 15.2,
+   "tokens_in": 59706,
+   "tokens_out": 36373,
+   "tokens_per_doc": 2669
+  },
+  "documents": [
+   {
+    "name": "en_clean",
+    "tags": [
+     "clean",
+     "en"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 7.3,
+    "problems": []
+   },
+   {
+    "name": "en_clean",
+    "tags": [
+     "clean",
+     "en"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 5.1,
+    "problems": []
+   },
+   {
+    "name": "en_clean",
+    "tags": [
+     "clean",
+     "en"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 7.4,
+    "problems": []
+   },
+   {
+    "name": "uz_latin",
+    "tags": [
+     "uz",
+     "latin"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 7.1,
+    "problems": []
+   },
+   {
+    "name": "uz_latin",
+    "tags": [
+     "uz",
+     "latin"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 6.3,
+    "problems": []
+   },
+   {
+    "name": "uz_latin",
+    "tags": [
+     "uz",
+     "latin"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 8.3,
+    "problems": []
+   },
+   {
+    "name": "ru_spaces_comma",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "thousands"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 7.7,
+    "problems": []
+   },
+   {
+    "name": "ru_spaces_comma",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "thousands"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 7.5,
+    "problems": [
+     "number:wrong (ждали 'ТН-88', получили 'TH-88')"
+    ]
+   },
+   {
+    "name": "ru_spaces_comma",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "thousands"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 8.5,
+    "problems": []
+   },
+   {
+    "name": "ru_noisy_rotated",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "noisy",
+     "rotated"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 6.2,
+    "problems": []
+   },
+   {
+    "name": "ru_noisy_rotated",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "noisy",
+     "rotated"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 6.8,
+    "problems": []
+   },
+   {
+    "name": "ru_noisy_rotated",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "noisy",
+     "rotated"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 6.2,
+    "problems": []
+   },
+   {
+    "name": "usd_fractions",
+    "tags": [
+     "en",
+     "usd",
+     "fractions"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 6.1,
+    "problems": []
+   },
+   {
+    "name": "usd_fractions",
+    "tags": [
+     "en",
+     "usd",
+     "fractions"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 6.8,
+    "problems": []
+   },
+   {
+    "name": "usd_fractions",
+    "tags": [
+     "en",
+     "usd",
+     "fractions"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 5.6,
+    "problems": []
+   },
+   {
+    "name": "missing_fields",
+    "tags": [
+     "en",
+     "sparse"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 6.5,
+    "problems": []
+   },
+   {
+    "name": "missing_fields",
+    "tags": [
+     "en",
+     "sparse"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 6.6,
+    "problems": []
+   },
+   {
+    "name": "missing_fields",
+    "tags": [
+     "en",
+     "sparse"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 7.0,
+    "problems": []
+   },
+   {
+    "name": "injection",
+    "tags": [
+     "en",
+     "adversarial"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 5.7,
+    "problems": []
+   },
+   {
+    "name": "injection",
+    "tags": [
+     "en",
+     "adversarial"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 5.2,
+    "problems": []
+   },
+   {
+    "name": "injection",
+    "tags": [
+     "en",
+     "adversarial"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 5.2,
+    "problems": []
+   },
+   {
+    "name": "long_table",
+    "tags": [
+     "en",
+     "many-lines"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 15.2,
+    "problems": [
+     "seller_tin:wrong (ждали '300000111', получили '3000000111')",
+     "buyer_tin:wrong (ждали '300000222', получили '3000000222')"
+    ]
+   },
+   {
+    "name": "long_table",
+    "tags": [
+     "en",
+     "many-lines"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 12.3,
+    "problems": [
+     "seller_tin:wrong (ждали '300000111', получили '3000000111')",
+     "buyer_tin:wrong (ждали '300000222', получили '3000000222')"
+    ]
+   },
+   {
+    "name": "long_table",
+    "tags": [
+     "en",
+     "many-lines"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 10.7,
+    "problems": []
+   },
+   {
+    "name": "low_contrast_jpeg",
+    "tags": [
+     "en",
+     "jpeg",
+     "low-contrast"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 4.2,
+    "problems": []
+   },
+   {
+    "name": "low_contrast_jpeg",
+    "tags": [
+     "en",
+     "jpeg",
+     "low-contrast"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 5.4,
+    "problems": []
+   },
+   {
+    "name": "low_contrast_jpeg",
+    "tags": [
+     "en",
+     "jpeg",
+     "low-contrast"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 3.9,
+    "problems": []
+   },
+   {
+    "name": "image_pdf",
+    "tags": [
+     "en",
+     "pdf"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 5.8,
+    "problems": []
+   },
+   {
+    "name": "image_pdf",
+    "tags": [
+     "en",
+     "pdf"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 6.2,
+    "problems": []
+   },
+   {
+    "name": "image_pdf",
+    "tags": [
+     "en",
+     "pdf"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 5.1,
+    "problems": []
+   },
+   {
+    "name": "csv_ru",
+    "tags": [
+     "ru",
+     "csv",
+     "no-total"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 7.1,
+    "problems": []
+   },
+   {
+    "name": "csv_ru",
+    "tags": [
+     "ru",
+     "csv",
+     "no-total"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 6.7,
+    "problems": []
+   },
+   {
+    "name": "csv_ru",
+    "tags": [
+     "ru",
+     "csv",
+     "no-total"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 6.4,
+    "problems": []
+   },
+   {
+    "name": "xlsx_ru",
+    "tags": [
+     "ru",
+     "xlsx",
+     "no-total"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 7.1,
+    "problems": []
+   },
+   {
+    "name": "xlsx_ru",
+    "tags": [
+     "ru",
+     "xlsx",
+     "no-total"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 5.7,
+    "problems": []
+   },
+   {
+    "name": "xlsx_ru",
+    "tags": [
+     "ru",
+     "xlsx",
+     "no-total"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 6.3,
+    "problems": []
+   }
+  ]
+ },
+ "deepseek": {
+  "summary": {
+   "provider": "deepseek",
+   "model": "deepseek-flash",
+   "documents_scored": 33,
+   "unsupported_input": 3,
+   "failed": 0,
+   "fields_total": 720,
+   "field_accuracy": "99.0%",
+   "manual_edit_rate_fields": "1.0%",
+   "docs_needing_edit": "7/33",
+   "wrong": 7,
+   "missed": 0,
+   "hallucinated": 0,
+   "high_conf_errors": 7,
+   "avg_conf_correct": 0.946,
+   "avg_conf_wrong": 0.959,
+   "latency_p50_s": 3.6,
+   "latency_max_s": 9.7,
+   "tokens_in": 33255,
+   "tokens_out": 39516,
+   "tokens_per_doc": 2205
+  },
+  "documents": [
+   {
+    "name": "en_clean",
+    "tags": [
+     "clean",
+     "en"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.5,
+    "problems": []
+   },
+   {
+    "name": "en_clean",
+    "tags": [
+     "clean",
+     "en"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 3.4,
+    "problems": []
+   },
+   {
+    "name": "en_clean",
+    "tags": [
+     "clean",
+     "en"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 4.1,
+    "problems": []
+   },
+   {
+    "name": "uz_latin",
+    "tags": [
+     "uz",
+     "latin"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.8,
+    "problems": [
+     "doc_type:wrong (ждали 'invoice', получили 'HISOB-FAKTURA')"
+    ]
+   },
+   {
+    "name": "uz_latin",
+    "tags": [
+     "uz",
+     "latin"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 3.8,
+    "problems": [
+     "doc_type:wrong (ждали 'invoice', получили 'HISOB-FAKTURA')"
+    ]
+   },
+   {
+    "name": "uz_latin",
+    "tags": [
+     "uz",
+     "latin"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 4.1,
+    "problems": [
+     "doc_type:wrong (ждали 'invoice', получили 'HISOB-FAKTURA')"
+    ]
+   },
+   {
+    "name": "ru_spaces_comma",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "thousands"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.7,
+    "problems": [
+     "number:wrong (ждали 'ТН-88', получили 'TH-88')"
+    ]
+   },
+   {
+    "name": "ru_spaces_comma",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "thousands"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 4.2,
+    "problems": [
+     "doc_type:wrong (ждали 'invoice', получили 'СЧЁТ-ФАКТУРА')"
+    ]
+   },
+   {
+    "name": "ru_spaces_comma",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "thousands"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 3.8,
+    "problems": [
+     "doc_type:wrong (ждали 'invoice', получили 'СЧЁТ-ФАКТУРА')"
+    ]
+   },
+   {
+    "name": "ru_noisy_rotated",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "noisy",
+     "rotated"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.4,
+    "problems": [
+     "doc_type:wrong (ждали 'invoice', получили 'СЧЁТ')"
+    ]
+   },
+   {
+    "name": "ru_noisy_rotated",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "noisy",
+     "rotated"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 3.3,
+    "problems": []
+   },
+   {
+    "name": "ru_noisy_rotated",
+    "tags": [
+     "ru",
+     "cyrillic",
+     "noisy",
+     "rotated"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 3.6,
+    "problems": []
+   },
+   {
+    "name": "usd_fractions",
+    "tags": [
+     "en",
+     "usd",
+     "fractions"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.6,
+    "problems": []
+   },
+   {
+    "name": "usd_fractions",
+    "tags": [
+     "en",
+     "usd",
+     "fractions"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 3.6,
+    "problems": []
+   },
+   {
+    "name": "usd_fractions",
+    "tags": [
+     "en",
+     "usd",
+     "fractions"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 3.4,
+    "problems": []
+   },
+   {
+    "name": "missing_fields",
+    "tags": [
+     "en",
+     "sparse"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 4.3,
+    "problems": []
+   },
+   {
+    "name": "missing_fields",
+    "tags": [
+     "en",
+     "sparse"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 2.8,
+    "problems": []
+   },
+   {
+    "name": "missing_fields",
+    "tags": [
+     "en",
+     "sparse"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 6.4,
+    "problems": []
+   },
+   {
+    "name": "injection",
+    "tags": [
+     "en",
+     "adversarial"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 2.7,
+    "problems": []
+   },
+   {
+    "name": "injection",
+    "tags": [
+     "en",
+     "adversarial"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 3.2,
+    "problems": []
+   },
+   {
+    "name": "injection",
+    "tags": [
+     "en",
+     "adversarial"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 2.8,
+    "problems": []
+   },
+   {
+    "name": "long_table",
+    "tags": [
+     "en",
+     "many-lines"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 8.1,
+    "problems": []
+   },
+   {
+    "name": "long_table",
+    "tags": [
+     "en",
+     "many-lines"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 9.7,
+    "problems": []
+   },
+   {
+    "name": "long_table",
+    "tags": [
+     "en",
+     "many-lines"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 7.4,
+    "problems": []
+   },
+   {
+    "name": "low_contrast_jpeg",
+    "tags": [
+     "en",
+     "jpeg",
+     "low-contrast"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.0,
+    "problems": []
+   },
+   {
+    "name": "low_contrast_jpeg",
+    "tags": [
+     "en",
+     "jpeg",
+     "low-contrast"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 4.5,
+    "problems": []
+   },
+   {
+    "name": "low_contrast_jpeg",
+    "tags": [
+     "en",
+     "jpeg",
+     "low-contrast"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 2.7,
+    "problems": []
+   },
+   {
+    "name": "image_pdf",
+    "tags": [
+     "en",
+     "pdf"
+    ],
+    "rep": 0,
+    "status": "unsupported"
+   },
+   {
+    "name": "image_pdf",
+    "tags": [
+     "en",
+     "pdf"
+    ],
+    "rep": 1,
+    "status": "unsupported"
+   },
+   {
+    "name": "image_pdf",
+    "tags": [
+     "en",
+     "pdf"
+    ],
+    "rep": 2,
+    "status": "unsupported"
+   },
+   {
+    "name": "csv_ru",
+    "tags": [
+     "ru",
+     "csv",
+     "no-total"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.9,
+    "problems": []
+   },
+   {
+    "name": "csv_ru",
+    "tags": [
+     "ru",
+     "csv",
+     "no-total"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 5.1,
+    "problems": []
+   },
+   {
+    "name": "csv_ru",
+    "tags": [
+     "ru",
+     "csv",
+     "no-total"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 3.6,
+    "problems": []
+   },
+   {
+    "name": "xlsx_ru",
+    "tags": [
+     "ru",
+     "xlsx",
+     "no-total"
+    ],
+    "rep": 0,
+    "status": "ok",
+    "seconds": 3.4,
+    "problems": []
+   },
+   {
+    "name": "xlsx_ru",
+    "tags": [
+     "ru",
+     "xlsx",
+     "no-total"
+    ],
+    "rep": 1,
+    "status": "ok",
+    "seconds": 3.3,
+    "problems": []
+   },
+   {
+    "name": "xlsx_ru",
+    "tags": [
+     "ru",
+     "xlsx",
+     "no-total"
+    ],
+    "rep": 2,
+    "status": "ok",
+    "seconds": 3.4,
+    "problems": []
+   }
+  ]
+ }
+}
