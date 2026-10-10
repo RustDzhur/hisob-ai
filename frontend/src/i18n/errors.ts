@@ -6,7 +6,7 @@ export function errorText(t: Dict, err: ApiError): string {
   return t.errors[err.code] ?? err.message;
 }
 
-function fill(template: string, params: Record<string, unknown> | undefined): string {
+export function fill(template: string, params: Record<string, unknown> | undefined): string {
   return template.replace(/\{(\w+)\}/g, (_, k: string) => String(params?.[k] ?? `{${k}}`));
 }
 

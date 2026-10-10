@@ -60,6 +60,10 @@ def test_invite_preview_accept_flow(new_client: NewClient, admin_engine: Engine)
     assert joined.json()["permissions"] == [
         "catalog.manage",
         "catalog.read",
+        "documents.approve",
+        "documents.read",
+        "documents.review",
+        "documents.upload",
         "members.read",
         "org.read",
         "warehouses.read",

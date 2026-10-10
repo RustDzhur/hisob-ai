@@ -16,6 +16,10 @@ jobs:
       TEST_ADMIN_URL: postgresql+psycopg://hisob_admin:ci-admin@localhost:5432/postgres
       TEST_MIGRATOR_PASSWORD: ci-migrator
       TEST_APP_PASSWORD: ci-app
+      S3_ENDPOINT_URL: http://localhost:8333
+      S3_BUCKET: hisob-documents
+      S3_ACCESS_KEY: ci-access-key
+      S3_SECRET_KEY: ci-secret-key-0123456789
       DATABASE_URL: postgresql+psycopg://hisob_app:ci-app@localhost:5432/hisob_test
       MIGRATION_DATABASE_URL: postgresql+psycopg://hisob_migrator:ci-migrator@localhost:5432/hisob_test
     defaults: { run: { working-directory: backend } }
@@ -26,6 +30,12 @@ jobs:
       - name: Create DB roles (as infra/postgres/init/01-roles.sh)
         run: |
           PGPASSWORD=ci-admin psql -h localhost -U hisob_admin -d hisob -v ON_ERROR_STOP=1 -c "CREATE ROLE hisob_migrator LOGIN PASSWORD 'ci-migrator' NOBYPASSRLS" -c "CREATE ROLE hisob_app LOGIN PASSWORD 'ci-app' NOBYPASSRLS"
+      - name: Start S3-compatible storage (SeaweedFS)
+        run: |
+          docker run -d --name storage -p 8333:8333 \
+            -e AWS_ACCESS_KEY_ID=ci-access-key -e AWS_SECRET_ACCESS_KEY=ci-secret-key-0123456789 \
+            chrislusf/seaweedfs:4.48 server -dir=/data -s3 -master.volumeSizeLimitMB=256
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:8333 && break; sleep 2; done
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy

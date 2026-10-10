@@ -1,5 +1,6 @@
 # Hisob AI — локальная/серверная среда разработки.
-# Порты публикуются только на 127.0.0.1. Redis появится вместе с первой фоновой
+# Порты публикуются только на 127.0.0.1. Файлы документов хранятся в сервисе storage (S3 API).
+# Redis появится вместе с первой фоновой
 # задачей (этап 3): сейчас им ничего не пользуется, поэтому его здесь нет.
 name: hisob
 
@@ -8,6 +9,10 @@ x-backend-env: &backend-env
   DATABASE_URL: postgresql+psycopg://hisob_app:${APP_DB_PASSWORD}@postgres:5432/hisob
   MIGRATION_DATABASE_URL: postgresql+psycopg://hisob_migrator:${MIGRATOR_DB_PASSWORD}@postgres:5432/hisob
   COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  S3_ENDPOINT_URL: http://storage:8333
+  S3_BUCKET: hisob-documents
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?задайте S3_ACCESS_KEY в .env}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?задайте S3_SECRET_KEY в .env}
 
 services:
   postgres:
@@ -28,6 +33,17 @@ services:
       timeout: 5s
       retries: 20
 
+  # S3-совместимое хранилище файлов документов (MinIO больше не публикует образы).
+  storage:
+    image: chrislusf/seaweedfs:4.48
+    restart: unless-stopped
+    command: ["server", "-dir=/data", "-s3", "-master.volumeSizeLimitMB=1024"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:?задайте S3_ACCESS_KEY в .env}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:?задайте S3_SECRET_KEY в .env}
+    volumes:
+      - storage-data:/data
+
   migrate:
     build: ./backend
     environment: *backend-env
@@ -46,6 +62,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      storage:
+        condition: service_started
 
   frontend:
     build: ./frontend
@@ -72,6 +90,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      storage:
+        condition: service_started
 
   e2e:
     profiles: ["test"]
@@ -88,3 +108,4 @@ services:
 
 volumes:
   pgdata:
+  storage-data:

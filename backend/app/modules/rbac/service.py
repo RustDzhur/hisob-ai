@@ -15,6 +15,10 @@ CATALOG_READ = "catalog.read"
 CATALOG_MANAGE = "catalog.manage"
 WAREHOUSES_READ = "warehouses.read"
 WAREHOUSES_MANAGE = "warehouses.manage"
+DOCUMENTS_READ = "documents.read"
+DOCUMENTS_UPLOAD = "documents.upload"
+DOCUMENTS_REVIEW = "documents.review"
+DOCUMENTS_APPROVE = "documents.approve"
 
 ROLE_OWNER = "owner"
 

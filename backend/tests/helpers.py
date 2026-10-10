@@ -77,3 +77,14 @@ def patch_member(client: TestClient, org_id: str, member_id: str, **body: Any) -
         json=body,
         headers=csrf_headers(client),
     )
+
+
+def upload_doc(
+    client: TestClient, org: str, data: bytes, name: str = "invoice.pdf", doc_type: str = "invoice"
+) -> Any:
+    return client.post(
+        f"/api/v1/organizations/{org}/documents",
+        files={"file": (name, data, "application/octet-stream")},
+        data={"doc_type": doc_type},
+        headers=csrf_headers(client),
+    )

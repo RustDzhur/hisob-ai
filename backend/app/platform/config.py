@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     login_window_minutes: int = 15
     password_min_length: int = 10
     invitation_ttl_days: int = 7
+
+    # Хранилище файлов (любое S3-совместимое; в compose — SeaweedFS).
+    s3_endpoint_url: str = "http://storage:8333"
+    s3_bucket: str = "hisob-documents"
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "us-east-1"
+    max_upload_bytes: int = 20 * 1024 * 1024
     # Доверять X-Forwarded-For только если перед API стоит наш прокси.
     trust_proxy_headers: bool = False
 

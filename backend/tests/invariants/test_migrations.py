@@ -4,6 +4,7 @@ from sqlalchemy import Engine
 
 from app.modules.audit import models as _a  # noqa: F401
 from app.modules.catalog import models as _c  # noqa: F401
+from app.modules.documents import models as _d  # noqa: F401
 from app.modules.identity import models as _i  # noqa: F401
 from app.modules.inventory import models as _inv  # noqa: F401
 from app.modules.rbac import models as _r  # noqa: F401
@@ -46,5 +47,6 @@ def test_seeded_roles_and_permissions(admin_engine: Engine) -> None:
             "members.read",
             "audit.read",
             "catalog.read",
+            "documents.read",
             "warehouses.read",
         }

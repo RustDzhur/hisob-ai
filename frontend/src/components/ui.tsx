@@ -189,3 +189,33 @@ export function Drawer({
     </dialog>
   );
 }
+
+/** Модальное окно с произвольным содержимым и кнопками. */
+export function Modal({
+  open,
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className="dialog dialog-wide" onCancel={onClose} aria-labelledby="modal-title">
+      <h2 id="modal-title">{title}</h2>
+      {open ? children : null}
+      {footer ? <div className="dialog-actions">{footer}</div> : null}
+    </dialog>
+  );
+}

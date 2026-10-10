@@ -38,6 +38,11 @@ export function useFormat() {
   return useMemo(() => {
     const tag = intlLocale[locale];
     return {
+      // дата без времени (YYYY-MM-DD) показывается как календарный день, без сдвига часовых поясов
+      dateOnly: (s: string) => {
+        const [y, m, d] = s.split("-").map(Number);
+        return new Intl.DateTimeFormat(tag, { dateStyle: "short" }).format(new Date(y, m - 1, d));
+      },
       date: (iso: string) => new Intl.DateTimeFormat(tag, { dateStyle: "short" }).format(new Date(iso)),
       dateTime: (iso: string, timeZone?: string) =>
         new Intl.DateTimeFormat(tag, { dateStyle: "short", timeStyle: "medium", timeZone }).format(new Date(iso)),

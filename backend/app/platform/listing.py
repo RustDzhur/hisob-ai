@@ -31,7 +31,7 @@ class ListQuery:
     page_size: int
     q: str | None
     sort: str | None
-    order: Literal["asc", "desc"]
+    order: Literal["asc", "desc"] | None  # None -> порядок по умолчанию задаёт сам список
 
 
 def list_query(
@@ -39,7 +39,7 @@ def list_query(
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
     q: Annotated[str | None, Query(max_length=100)] = None,
     sort: Annotated[str | None, Query(max_length=30)] = None,
-    order: Annotated[Literal["asc", "desc"], Query()] = "asc",
+    order: Annotated[Literal["asc", "desc"] | None, Query()] = None,
 ) -> ListQuery:
     term = q.strip() if q else None
     return ListQuery(page, page_size, term or None, sort, order)
@@ -68,6 +68,7 @@ def paginate(
     sort_map: dict[str, SQLColumnExpression[Any]],
     default_sort: str,
     id_column: SQLColumnExpression[Any],
+    default_order: Literal["asc", "desc"] = "asc",
 ) -> tuple[list[Any], int]:
     key = lq.sort or default_sort
     column = sort_map.get(key)
@@ -79,7 +80,7 @@ def paginate(
             [{"field": "sort", "code": "invalid_sort", "message": "Недопустимое поле сортировки."}],
         )
     total = db.scalar(select(func.count()).select_from(stmt.order_by(None).subquery())) or 0
-    ordering = column.asc() if lq.order == "asc" else column.desc()
+    ordering = column.asc() if (lq.order or default_order) == "asc" else column.desc()
     rows = db.scalars(
         stmt.order_by(ordering, id_column).limit(lq.page_size).offset((lq.page - 1) * lq.page_size)
     ).all()

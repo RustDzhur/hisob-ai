@@ -6,6 +6,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
+  expect: { timeout: 10_000 },
   reporter: [["list"]],
   use: { baseURL: BASE_URL, storageState: ruState, trace: "retain-on-failure" },
   projects: [

@@ -39,7 +39,8 @@ type Options = { method?: string; body?: unknown; idempotencyKey?: string };
 export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  const isForm = typeof FormData !== "undefined" && opts.body instanceof FormData;
+  if (opts.body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (method !== "GET") headers["X-CSRF-Token"] = readCookie("hisob_csrf");
   if (opts.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
 
@@ -48,7 +49,7 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
     res = await fetch(`/api/v1${path}`, {
       method,
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.body === undefined ? undefined : isForm ? (opts.body as FormData) : JSON.stringify(opts.body),
       credentials: "same-origin",
     });
   } catch {
@@ -173,4 +174,55 @@ export type Warehouse = {
   archived: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type DocIssue = { code: string; severity: "error" | "warning"; field: string | null; params: Record<string, unknown> };
+export type DocLine = {
+  position: number;
+  description: string;
+  product_id: string | null;
+  product_sku: string | null;
+  unit_id: string | null;
+  unit_code: string | null;
+  quantity: string | null;
+  unit_price: string | null;
+  discount: string | null;
+  tax_amount: string | null;
+  amount: string | null;
+};
+export type DocumentFull = {
+  id: string;
+  doc_type: string;
+  status: string;
+  number: string | null;
+  doc_date: string | null;
+  counterparty: { id: string; name: string; tin: string | null; archived: boolean } | null;
+  currency: string | null;
+  total_amount: string | null;
+  tax_total: string | null;
+  notes: string | null;
+  file: { original_name: string; content_type: string; size_bytes: number; sha256: string; inline: boolean } | null;
+  lines: DocLine[];
+  issues: DocIssue[];
+  version: number;
+  duplicate_of_id: string | null;
+  rejection_reason: string | null;
+  approved_by_name: string | null;
+  approved_at: string | null;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+export type DocumentListItem = {
+  id: string;
+  doc_type: string;
+  status: string;
+  number: string | null;
+  doc_date: string | null;
+  counterparty_name: string | null;
+  currency: string | null;
+  total_amount: string | null;
+  original_name: string | null;
+  version: number;
+  created_at: string;
 };

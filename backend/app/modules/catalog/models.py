@@ -76,6 +76,7 @@ class Counterparty(Base):
             postgresql_where=text("tin IS NOT NULL"),
         ),
         Index("ix_counterparty_org_name", "organization_id", "name"),
+        UniqueConstraint("id", "organization_id", name="uq_counterparty_id_org"),
         CheckConstraint("length(btrim(name)) > 0", name="name_not_blank"),
     )
 
