@@ -1,0 +1,48 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: hisob_admin, POSTGRES_PASSWORD: ci-admin, POSTGRES_DB: hisob }
+        options: >-
+          --health-cmd "pg_isready -U hisob_admin" --health-interval 5s --health-timeout 5s --health-retries 20
+        ports: ["5432:5432"]
+    env:
+      TEST_POSTGRES_HOST: localhost
+      TEST_ADMIN_URL: postgresql+psycopg://hisob_admin:ci-admin@localhost:5432/postgres
+      TEST_MIGRATOR_PASSWORD: ci-migrator
+      TEST_APP_PASSWORD: ci-app
+      DATABASE_URL: postgresql+psycopg://hisob_app:ci-app@localhost:5432/hisob_test
+      MIGRATION_DATABASE_URL: postgresql+psycopg://hisob_migrator:ci-migrator@localhost:5432/hisob_test
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - name: Create DB roles (as infra/postgres/init/01-roles.sh)
+        run: |
+          PGPASSWORD=ci-admin psql -h localhost -U hisob_admin -d hisob -v ON_ERROR_STOP=1 -c "CREATE ROLE hisob_migrator LOGIN PASSWORD 'ci-migrator' NOBYPASSRLS" -c "CREATE ROLE hisob_app LOGIN PASSWORD 'ci-app' NOBYPASSRLS"
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run lint-imports
+      - run: uv run pytest -ra
+      - run: uv run pip-audit
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=critical

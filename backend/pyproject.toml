@@ -1,0 +1,78 @@
+[project]
+name = "hisob-ai-backend"
+version = "0.1.0"
+description = "Hisob AI backend (modular monolith)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy>=2.0.30",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.13",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "email-validator>=2.2",
+    "argon2-cffi>=23.1",
+    "uuid6>=2024.7.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "import-linter>=2.0",
+    "pip-audit>=2.7",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["error::sqlalchemy.exc.SAWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "T20", "RUF"]
+ignore = ["S101", "E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S608"]
+"migrations/**" = ["S608"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["app", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["uuid6", "uuid6.*"]
+ignore_missing_imports = true
+
+[tool.importlinter]
+root_packages = ["app"]
+
+# Слои сверху вниз: верхний может импортировать нижний, обратное запрещено.
+[[tool.importlinter.contracts]]
+name = "Module layering"
+type = "layers"
+layers = [
+    "app.modules.tenancy",
+    "app.modules.rbac",
+    "app.modules.identity",
+    "app.modules.audit",
+    "app.platform",
+]
+
+[[tool.importlinter.contracts]]
+name = "Platform does not know about modules"
+type = "forbidden"
+source_modules = ["app.platform"]
+forbidden_modules = ["app.modules"]
