@@ -1,4 +1,5 @@
-// Все строки интерфейса — в словаре (i18n-каркас; ru — основной язык, uz — вопрос Q7).
+// Источник структуры словаря: uz.ts и en.ts типизированы по Dict, пропущенный ключ не скомпилируется.
+// Языки: uz (по умолчанию), ru, en. Переводы на uz/en требуют проверки носителем и бухгалтером.
 export const ru = {
   brand: "Hisob AI",
   common: {
@@ -69,6 +70,7 @@ export const ru = {
     linkTitle: "Приглашение создано",
     linkNote:
       "Письмо не отправляется: передайте ссылку вручную. Она показывается один раз и действует 7 дней.",
+    linkLabel: "Ссылка-приглашение",
     copy: "Копировать",
     copied: "Скопировано",
     colName: "Участник",
@@ -184,4 +186,57 @@ export const ru = {
     document_operator: "Оператор документов",
     auditor: "Аудитор (только чтение)",
   } as Record<string, string>,
-} as const;
+  lang: { label: "Язык", uz: "Oʻzbekcha", ru: "Русский", en: "English" },
+  // Ошибки API: по code ответа. Если code неизвестен, показывается message сервера.
+  errors: {
+    not_authenticated: "Требуется вход.",
+    csrf_failed: "Сессия формы устарела. Обновите страницу и повторите.",
+    invalid_credentials: "Неверный email или пароль.",
+    too_many_attempts: "Слишком много неудачных попыток. Попробуйте позже.",
+    email_taken: "Пользователь с таким email уже зарегистрирован.",
+    weak_password: "Пароль не соответствует требованиям.",
+    validation_error: "Проверьте введённые данные.",
+    idempotency_key_required: "Не удалось выполнить запрос. Обновите страницу и повторите.",
+    idempotency_key_reuse: "Не удалось выполнить запрос. Повторите ещё раз.",
+    idempotency_conflict: "Такой запрос уже выполняется. Повторите через секунду.",
+    not_found: "Не найдено.",
+    forbidden: "Недостаточно прав для этого действия.",
+    unknown_role: "Неизвестная роль.",
+    already_member: "Этот пользователь уже участник организации.",
+    invitation_exists: "Для этого email уже есть действующее приглашение.",
+    invitation_not_found: "Приглашение не найдено.",
+    invitation_used: "Приглашение уже использовано.",
+    invitation_revoked: "Приглашение отозвано.",
+    invitation_expired: "Срок действия приглашения истёк.",
+    invitation_wrong_user: "Приглашение выдано на другой email. Войдите под нужным аккаунтом.",
+    last_owner: "В организации должен остаться хотя бы один активный владелец.",
+    cannot_suspend_self: "Нельзя приостановить собственное участие.",
+    invalid_current_password: "Текущий пароль указан неверно.",
+    internal_error: "Внутренняя ошибка. Укажите код обращения при обращении в поддержку.",
+    network: "Нет связи с сервером. Проверьте подключение и повторите.",
+    unknown: "Неизвестная ошибка.",
+    http_error: "Не удалось выполнить запрос.",
+    method_not_allowed: "Не удалось выполнить запрос.",
+  } as Record<string, string>,
+  // Ошибки отдельных полей: по details[].code. {min}, {max} подставляются из params.
+  fieldErrors: {
+    required: "Обязательное поле.",
+    too_short: "Слишком короткое значение.",
+    too_long: "Слишком длинное значение.",
+    invalid: "Некорректное значение.",
+    email_invalid: "Введите корректный email.",
+    email_taken: "Email уже используется.",
+    password_too_short: "Минимум {min} символов.",
+    password_too_long: "Максимум {max} символов.",
+    password_equals_email: "Пароль не должен совпадать с email.",
+    password_same_as_current: "Новый пароль должен отличаться от текущего.",
+    invalid_current_password: "Неверный пароль.",
+    unknown_role: "Неизвестная роль.",
+    tin_invalid: "ИНН/СТИР: только цифры, 9–14 знаков.",
+    timezone_unknown: "Неизвестный часовой пояс.",
+    currency_invalid: "Код валюты: 3 латинские буквы (например, UZS).",
+    date_range_invalid: "Дата «с» позже даты «по».",
+  } as Record<string, string>,
+};
+
+export type Dict = typeof ru;

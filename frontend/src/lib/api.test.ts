@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, ApiError, fieldErrors } from "./api";
+import { errorText, fieldErrorMap } from "@/i18n/errors";
+import { dictionaries } from "@/i18n";
+import { api, ApiError } from "./api";
 
 function mockFetch(status: number, body: unknown, headers: Record<string, string> = {}) {
   const fn = vi.fn().mockResolvedValue(
@@ -40,7 +42,7 @@ describe("api()", () => {
     expect(err).toBeInstanceOf(ApiError);
     expect(err.code).toBe("email_taken");
     expect(err.correlationId).toBe("cid-1");
-    expect(fieldErrors(err)).toEqual({ email: "Email уже используется." });
+    expect(fieldErrorMap(dictionaries.ru, err)).toEqual({ email: "Email уже используется." });
   });
 
   it("204 возвращает undefined", async () => {
@@ -52,6 +54,7 @@ describe("api()", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("failed")));
     const err = (await api("/x").catch((e: unknown) => e)) as ApiError;
     expect(err.code).toBe("network");
-    expect(err.message).toMatch(/Нет связи/);
+    expect(errorText(dictionaries.uz, err)).toMatch(/aloqa yoʻq/);
+    expect(errorText(dictionaries.en, err)).toMatch(/Cannot reach the server/);
   });
 });

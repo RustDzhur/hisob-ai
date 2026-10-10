@@ -1,3 +1,4 @@
+import { newContext } from "./helpers";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const PASSWORD = "correct horse battery";
@@ -19,7 +20,7 @@ async function login(page: Page, email: string, password = PASSWORD) {
 }
 
 async function ownerWithOrg(browser: Browser) {
-  const ctx = await browser.newContext();
+  const ctx = await newContext(browser);
   const page = await ctx.newPage();
   const email = `owner-${uniq()}@example.uz`;
   await page.goto("/register");
@@ -60,7 +61,7 @@ test("журнал аудита: события, фильтр, доступ то
   await expect(table.getByText("Приглашение участника")).toBeVisible();
 
   // бухгалтер: пункта меню нет, прямой переход -> «Нет доступа»
-  const mctx = await browser.newContext();
+  const mctx = await newContext(browser);
   const m = await mctx.newPage();
   await m.goto(link);
   await m.getByRole("link", { name: "Зарегистрироваться" }).click();
@@ -77,7 +78,7 @@ test("журнал аудита: события, фильтр, доступ то
 
 test("смена пароля: старый перестаёт работать, другие сессии завершены", async ({ browser }) => {
   const owner = await ownerWithOrg(browser);
-  const other = await browser.newContext();
+  const other = await newContext(browser);
   const o = await other.newPage();
   await login(o, owner.email);
   await expect(o.getByRole("heading", { name: /Организация:/ })).toBeVisible();
@@ -106,7 +107,7 @@ test("смена пароля: старый перестаёт работать,
 
 test("сессии: завершение чужой сессии и «выйти на всех устройствах»", async ({ browser }) => {
   const owner = await ownerWithOrg(browser);
-  const other = await browser.newContext();
+  const other = await newContext(browser);
   const o = await other.newPage();
   await login(o, owner.email);
   await expect(o.getByRole("heading", { name: /Организация:/ })).toBeVisible();

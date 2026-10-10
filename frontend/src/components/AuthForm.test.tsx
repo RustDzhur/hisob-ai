@@ -1,7 +1,12 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { dictionaries } from "@/i18n";
+import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { AuthForm, validateAuth } from "./AuthForm";
+
+const ru = dictionaries.ru;
+const renderRu = (ui: React.ReactElement) => render(<LocaleProvider initial="ru">{ui}</LocaleProvider>);
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
@@ -13,13 +18,13 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("validateAuth", () => {
   it("логин: требует email и пароль", () => {
-    expect(validateAuth("login", { email: "", password: "", fullName: "" })).toEqual({
+    expect(validateAuth("login", { email: "", password: "", fullName: "" }, ru)).toEqual({
       email: "Обязательное поле.",
       password: "Обязательное поле.",
     });
   });
   it("регистрация: короткий пароль и пустое имя", () => {
-    const e = validateAuth("register", { email: "a@b.uz", password: "short", fullName: " " });
+    const e = validateAuth("register", { email: "a@b.uz", password: "short", fullName: " " }, ru);
     expect(e.password).toMatch(/10 символов/);
     expect(e.full_name).toBeDefined();
   });
@@ -34,7 +39,7 @@ describe("<AuthForm mode=login>", () => {
       ),
     );
     const user = userEvent.setup();
-    render(<AuthForm mode="login" />);
+    renderRu(<AuthForm mode="login" />);
     await user.type(screen.getByLabelText("Email"), "a@b.uz");
     await user.type(screen.getByLabelText("Пароль"), "whatever-pass");
     await user.click(screen.getByRole("button", { name: "Войти" }));
@@ -44,7 +49,7 @@ describe("<AuthForm mode=login>", () => {
   });
 
   it("ссылка на регистрацию сохраняет безопасный next", () => {
-    render(<AuthForm mode="login" />);
+    renderRu(<AuthForm mode="login" />);
     const link = screen.getByRole("link", { name: "Зарегистрироваться" });
     expect(link.getAttribute("href")).toBe("/register?next=%2Finvite%2Fabc");
   });
@@ -53,7 +58,7 @@ describe("<AuthForm mode=login>", () => {
     const fn = vi.fn();
     vi.stubGlobal("fetch", fn);
     const user = userEvent.setup();
-    render(<AuthForm mode="login" />);
+    renderRu(<AuthForm mode="login" />);
     await user.click(screen.getByRole("button", { name: "Войти" }));
     expect(fn).not.toHaveBeenCalled();
     expect(screen.getAllByRole("alert")).toHaveLength(2);

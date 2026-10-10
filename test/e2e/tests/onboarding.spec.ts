@@ -1,3 +1,4 @@
+import { newContext } from "./helpers";
 import { expect, test, type Page } from "@playwright/test";
 
 const PASSWORD = "correct horse battery";
@@ -64,7 +65,7 @@ test("валидация формы регистрации и занятый ema
   await register(page, email);
   await expect(page.getByRole("heading", { name: "Создайте организацию" })).toBeVisible();
 
-  const other = await browser.newContext();
+  const other = await newContext(browser);
   const p2 = await other.newPage();
   await register(p2, email, "Другой");
   await expect(p2.getByText("Email уже используется.")).toBeVisible();
@@ -77,7 +78,7 @@ test("чужая организация недоступна, без входа 
   await expect(page).toHaveURL(/\/o\/[0-9a-f-]{36}$/);
   const foreignUrl = page.url();
 
-  const ctx = await browser.newContext();
+  const ctx = await newContext(browser);
   const anon = await ctx.newPage();
   await anon.goto(foreignUrl);
   await expect(anon).toHaveURL(/\/login$/);
@@ -96,6 +97,6 @@ test("повторная отправка формы организации не
   const submit = page.getByRole("button", { name: "Создать организацию" });
   await submit.dblclick();
   await expect(page).toHaveURL(/\/o\/[0-9a-f-]{36}$/);
-  const options = await page.locator("select option").allTextContents();
+  const options = await page.getByRole("combobox", { name: "Организация" }).locator("option").allTextContents();
   expect(options.filter((t) => !t.includes("Создать организацию"))).toHaveLength(1);
 });

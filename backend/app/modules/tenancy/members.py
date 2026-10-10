@@ -59,7 +59,7 @@ def _role_by_code(db: Session, code: str) -> Role:
             422,
             "unknown_role",
             "Неизвестная роль.",
-            [{"field": "role_code", "message": "Неизвестная роль."}],
+            [{"field": "role_code", "code": "unknown_role", "message": "Неизвестная роль."}],
         )
     return role
 

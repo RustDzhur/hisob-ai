@@ -3,11 +3,12 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Banner, Button, ConfirmDialog, ErrorState, Field, Skeleton } from "@/components/ui";
-import { ru } from "@/i18n/ru";
+import { errorText, fieldErrorMap } from "@/i18n/errors";
+import { useFormat, useT } from "@/i18n/LocaleProvider";
 import {
   api,
   ApiError,
-  fieldErrors,
+  toApiError,
   type Invitation,
   type InvitationCreated,
   type Member,
@@ -15,11 +16,12 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/lib/session";
 
-const fmt = (iso: string) => new Date(iso).toLocaleDateString("ru-RU");
 
 type Pending = { kind: "suspend"; member: Member } | { kind: "revoke"; invitation: Invitation } | null;
 
 export default function MembersPage() {
+  const t = useT();
+  const { date: fmt } = useFormat();
   const { orgId } = useParams<{ orgId: string }>();
   const { state } = useSession();
   const org = state.status === "ready" ? state.orgs.find((o) => o.id === orgId) : undefined;
@@ -56,7 +58,7 @@ export default function MembersPage() {
         setRoleCode((cur) => cur || r.find((x) => x.code === "accountant")?.code || r[0]?.code || "");
       }
     } catch (e) {
-      setLoadError(e instanceof ApiError ? e : new ApiError(0, "unknown", "Неизвестная ошибка."));
+      setLoadError(toApiError(e));
     }
   }, [orgId, canManage]);
 
@@ -68,8 +70,8 @@ export default function MembersPage() {
   if (!canRead) {
     return (
       <div className="card">
-        <h1>{ru.members.noAccessTitle}</h1>
-        <p className="muted">{ru.members.noAccessBody}</p>
+        <h1>{t.members.noAccessTitle}</h1>
+        <p className="muted">{t.members.noAccessBody}</p>
       </div>
     );
   }
@@ -88,7 +90,7 @@ export default function MembersPage() {
       await api<Member>(`/organizations/${orgId}/members/${m.id}`, { method: "PATCH", body });
       await load();
     } catch (e) {
-      setActionError(e instanceof ApiError ? e : new ApiError(0, "unknown", "Неизвестная ошибка."));
+      setActionError(toApiError(e));
       await load();
     } finally {
       setBusyId(null);
@@ -103,7 +105,7 @@ export default function MembersPage() {
       await api<void>(`/organizations/${orgId}/invitations/${inv.id}`, { method: "DELETE" });
       await load();
     } catch (e) {
-      setActionError(e instanceof ApiError ? e : new ApiError(0, "unknown", "Неизвестная ошибка."));
+      setActionError(toApiError(e));
     } finally {
       setBusyId(null);
       setPending(null);
@@ -115,7 +117,7 @@ export default function MembersPage() {
     setInviteErrors({});
     setCreated(null);
     if (!email.trim()) {
-      setInviteErrors({ email: ru.auth.required });
+      setInviteErrors({ email: t.auth.required });
       return;
     }
     setInviteBusy(true);
@@ -129,8 +131,8 @@ export default function MembersPage() {
       setEmail("");
       await load();
     } catch (err) {
-      const fe = fieldErrors(err);
-      setInviteErrors(Object.keys(fe).length ? fe : { email: err instanceof ApiError ? err.message : "Ошибка." });
+      const fe = fieldErrorMap(t, err);
+      setInviteErrors(Object.keys(fe).length ? fe : { email: errorText(t, toApiError(err)) });
     } finally {
       setInviteBusy(false);
     }
@@ -149,54 +151,54 @@ export default function MembersPage() {
   return (
     <div className="stack">
       <div className="page-head">
-        <h1>{ru.members.title}</h1>
+        <h1>{t.members.title}</h1>
         {canManage ? (
           <Button onClick={() => setShowInvite((v) => !v)} aria-expanded={showInvite}>
-            {ru.members.invite}
+            {t.members.invite}
           </Button>
         ) : null}
       </div>
 
-      {actionError ? <Banner>{actionError.message}</Banner> : null}
+      {actionError ? <Banner>{errorText(t, actionError)}</Banner> : null}
 
       {showInvite && canManage ? (
         <section className="card" aria-labelledby="invite-h">
-          <h2 id="invite-h">{ru.members.inviteTitle}</h2>
+          <h2 id="invite-h">{t.members.inviteTitle}</h2>
           <form onSubmit={createInvite} noValidate>
-            <Field id="invite-email" type="email" label={ru.members.email} value={email}
+            <Field id="invite-email" type="email" label={t.members.email} value={email}
               onChange={(e) => setEmail(e.target.value)} error={inviteErrors.email ?? inviteErrors.role_code} />
             <div className="field">
-              <label htmlFor="invite-role">{ru.members.role}</label>
+              <label htmlFor="invite-role">{t.members.role}</label>
               <select id="invite-role" value={roleCode} onChange={(e) => setRoleCode(e.target.value)}>
                 {roles.filter(assignable).map((r) => (
-                  <option key={r.code} value={r.code}>{ru.roles[r.code] ?? r.name}</option>
+                  <option key={r.code} value={r.code}>{t.roles[r.code] ?? r.name}</option>
                 ))}
               </select>
             </div>
-            <Button type="submit" loading={inviteBusy}>{ru.members.send}</Button>
+            <Button type="submit" loading={inviteBusy}>{t.members.send}</Button>
           </form>
           {created ? (
             <div style={{ marginTop: 16 }}>
-              <Banner kind="info">{ru.members.linkTitle}: {created.email}</Banner>
+              <Banner kind="info">{t.members.linkTitle}: {created.email}</Banner>
               <div className="link-box">
-                <input ref={linkRef} readOnly value={inviteUrl} aria-label="Ссылка-приглашение" onFocus={(e) => e.target.select()} />
-                <Button variant="secondary" onClick={copy}>{copied ? ru.members.copied : ru.members.copy}</Button>
+                <input ref={linkRef} readOnly value={inviteUrl} aria-label={t.members.linkLabel} onFocus={(e) => e.target.select()} />
+                <Button variant="secondary" onClick={copy}>{copied ? t.members.copied : t.members.copy}</Button>
               </div>
-              <p className="hint">{ru.members.linkNote}</p>
+              <p className="hint">{t.members.linkNote}</p>
             </div>
           ) : null}
         </section>
       ) : null}
 
-      <section className="card" aria-label={ru.members.title}>
+      <section className="card" aria-label={t.members.title}>
         <div className="table-wrap">
           <table className="tbl">
             <thead>
               <tr>
-                <th>{ru.members.colName}</th>
-                <th>{ru.members.colRole}</th>
-                <th>{ru.members.colStatus}</th>
-                {canManage ? <th>{ru.members.colActions}</th> : null}
+                <th>{t.members.colName}</th>
+                <th>{t.members.colRole}</th>
+                <th>{t.members.colStatus}</th>
+                {canManage ? <th>{t.members.colActions}</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -205,38 +207,38 @@ export default function MembersPage() {
                 const editable = modifiable(m);
                 return (
                   <tr key={m.id}>
-                    <td data-label={ru.members.colName}>
-                      {m.full_name}{mine ? <span className="cell-sub"> ({ru.members.you})</span> : null}
+                    <td data-label={t.members.colName}>
+                      {m.full_name}{mine ? <span className="cell-sub"> ({t.members.you})</span> : null}
                       <div className="cell-sub">{m.email}</div>
                     </td>
-                    <td data-label={ru.members.colRole}>
+                    <td data-label={t.members.colRole}>
                       {editable ? (
-                        <select className="inline-select" aria-label={`${ru.members.role}: ${m.email}`}
+                        <select className="inline-select" aria-label={`${t.members.role}: ${m.email}`}
                           value={m.role} disabled={busyId === m.id}
                           onChange={(e) => void patch(m, { role_code: e.target.value })}>
                           {roles.filter((r) => assignable(r) || r.code === m.role).map((r) => (
-                            <option key={r.code} value={r.code}>{ru.roles[r.code] ?? r.name}</option>
+                            <option key={r.code} value={r.code}>{t.roles[r.code] ?? r.name}</option>
                           ))}
                         </select>
                       ) : (
-                        ru.roles[m.role] ?? m.role
+                        t.roles[m.role] ?? m.role
                       )}
                     </td>
-                    <td data-label={ru.members.colStatus}>
+                    <td data-label={t.members.colStatus}>
                       <span className={`badge ${m.status === "active" ? "badge-ok" : "badge-warn"}`}>
-                        {m.status === "active" ? ru.members.active : ru.members.suspended}
+                        {m.status === "active" ? t.members.active : t.members.suspended}
                       </span>
                     </td>
                     {canManage ? (
-                      <td data-label={ru.members.colActions}>
+                      <td data-label={t.members.colActions}>
                         <div className="row-actions">
                           {editable && !mine && m.status === "active" ? (
                             <Button variant="secondary" className="btn-sm" disabled={busyId === m.id}
-                              onClick={() => setPending({ kind: "suspend", member: m })}>{ru.members.suspend}</Button>
+                              onClick={() => setPending({ kind: "suspend", member: m })}>{t.members.suspend}</Button>
                           ) : null}
                           {editable && m.status === "suspended" ? (
                             <Button variant="secondary" className="btn-sm" loading={busyId === m.id}
-                              onClick={() => void patch(m, { status: "active" })}>{ru.members.reactivate}</Button>
+                              onClick={() => void patch(m, { status: "active" })}>{t.members.reactivate}</Button>
                           ) : null}
                         </div>
                       </td>
@@ -251,9 +253,9 @@ export default function MembersPage() {
 
       {canManage ? (
         <section className="card" aria-labelledby="pending-h">
-          <h2 id="pending-h">{ru.members.pendingTitle}</h2>
+          <h2 id="pending-h">{t.members.pendingTitle}</h2>
           {invitations.length === 0 ? (
-            <p className="muted">{ru.members.pendingEmpty}</p>
+            <p className="muted">{t.members.pendingEmpty}</p>
           ) : (
             <div className="table-wrap">
               <table className="tbl">
@@ -261,13 +263,13 @@ export default function MembersPage() {
                   {invitations.map((i) => (
                     <tr key={i.id}>
                       <td data-label="Email">{i.email}</td>
-                      <td data-label={ru.members.colRole}>{ru.roles[i.role] ?? i.role}</td>
-                      <td data-label={ru.members.expires}>
-                        {i.expired ? <span className="badge badge-warn">{ru.members.expired}</span> : fmt(i.expires_at)}
+                      <td data-label={t.members.colRole}>{t.roles[i.role] ?? i.role}</td>
+                      <td data-label={t.members.expires}>
+                        {i.expired ? <span className="badge badge-warn">{t.members.expired}</span> : fmt(i.expires_at)}
                       </td>
                       <td>
                         <Button variant="secondary" className="btn-sm" disabled={busyId === i.id}
-                          onClick={() => setPending({ kind: "revoke", invitation: i })}>{ru.members.revoke}</Button>
+                          onClick={() => setPending({ kind: "revoke", invitation: i })}>{t.members.revoke}</Button>
                       </td>
                     </tr>
                   ))}
@@ -280,9 +282,9 @@ export default function MembersPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.kind === "revoke" ? ru.members.revokeTitle : ru.members.suspendTitle}
-        body={pending?.kind === "revoke" ? ru.members.revokeBody : ru.members.suspendBody}
-        confirmLabel={ru.members.confirm}
+        title={pending?.kind === "revoke" ? t.members.revokeTitle : t.members.suspendTitle}
+        body={pending?.kind === "revoke" ? t.members.revokeBody : t.members.suspendBody}
+        confirmLabel={t.members.confirm}
         busy={busyId !== null}
         onCancel={() => setPending(null)}
         onConfirm={() => {

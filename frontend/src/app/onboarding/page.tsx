@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { AuthLayout } from "@/components/AuthLayout";
 import { Banner, Button, ErrorState, Field, Skeleton } from "@/components/ui";
-import { ru } from "@/i18n/ru";
-import { api, ApiError, fieldErrors, type Organization } from "@/lib/api";
+import { errorText, fieldErrorMap } from "@/i18n/errors";
+import { useT } from "@/i18n/LocaleProvider";
+import { api, ApiError, type Organization } from "@/lib/api";
 import { newIdempotencyKey } from "@/lib/id";
 import { rememberOrg, useSession } from "@/lib/session";
 
 export default function OnboardingPage() {
+  const t = useT();
   const router = useRouter();
   const { state, reload } = useSession();
   const [name, setName] = useState("");
@@ -33,7 +35,7 @@ export default function OnboardingPage() {
     e.preventDefault();
     setFormError(null);
     if (name.trim().length < 2) {
-      setErrors({ name: ru.onboarding.nameShort });
+      setErrors({ name: t.onboarding.nameShort });
       return;
     }
     setErrors({});
@@ -48,7 +50,7 @@ export default function OnboardingPage() {
       await reload();
       router.replace(`/o/${org.id}`);
     } catch (err) {
-      const fe = fieldErrors(err);
+      const fe = fieldErrorMap(t, err);
       setErrors(fe);
       if (err instanceof ApiError && Object.keys(fe).length === 0) setFormError(err);
       // тело изменилось -> нужен новый ключ идемпотентности
@@ -59,18 +61,18 @@ export default function OnboardingPage() {
   }
 
   return (
-    <AuthLayout title={ru.onboarding.title}>
-      <p className="muted">{ru.onboarding.lead}</p>
+    <AuthLayout title={t.onboarding.title}>
+      <p className="muted">{t.onboarding.lead}</p>
       <form onSubmit={onSubmit} noValidate>
-        {formError ? <Banner>{formError.message}</Banner> : null}
-        <Field id="name" label={ru.onboarding.name} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
-        <Field id="tin" label={ru.onboarding.tin} inputMode="numeric" value={tin} onChange={(e) => setTin(e.target.value)}
-          error={errors.tin} hint={ru.onboarding.tinHint} />
-        <Field id="timezone" label={ru.onboarding.timezone} value={timezone} onChange={(e) => setTimezone(e.target.value)} error={errors.timezone} />
-        <Field id="currency" label={ru.onboarding.currency} maxLength={3} value={currency}
+        {formError ? <Banner>{errorText(t, formError)}</Banner> : null}
+        <Field id="name" label={t.onboarding.name} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
+        <Field id="tin" label={t.onboarding.tin} inputMode="numeric" value={tin} onChange={(e) => setTin(e.target.value)}
+          error={errors.tin} hint={t.onboarding.tinHint} />
+        <Field id="timezone" label={t.onboarding.timezone} value={timezone} onChange={(e) => setTimezone(e.target.value)} error={errors.timezone} />
+        <Field id="currency" label={t.onboarding.currency} maxLength={3} value={currency}
           onChange={(e) => setCurrency(e.target.value.toUpperCase())} error={errors.base_currency} />
         <Button type="submit" loading={busy} style={{ width: "100%" }}>
-          {ru.onboarding.submit}
+          {t.onboarding.submit}
         </Button>
       </form>
     </AuthLayout>

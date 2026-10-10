@@ -42,7 +42,7 @@ def _email_taken() -> AppError:
         409,
         "email_taken",
         "Пользователь с таким email уже зарегистрирован.",
-        [{"field": "email", "message": "Email уже используется."}],
+        [{"field": "email", "code": "email_taken", "message": "Email уже используется."}],
     )
 
 
@@ -227,15 +227,29 @@ def change_password(db: Session, principal: Principal, *, current: str, new: str
             422,
             "invalid_current_password",
             "Текущий пароль указан неверно.",
-            [{"field": "current_password", "message": "Неверный пароль."}],
+            [
+                {
+                    "field": "current_password",
+                    "code": "invalid_current_password",
+                    "message": "Неверный пароль.",
+                }
+            ],
         )
-    validate_password(new, email=user.email, min_length=settings.password_min_length)
+    validate_password(
+        new, email=user.email, min_length=settings.password_min_length, field="new_password"
+    )
     if new == current:
         raise AppError(
             422,
             "weak_password",
             "Новый пароль должен отличаться от текущего.",
-            [{"field": "new_password", "message": "Новый пароль должен отличаться от текущего."}],
+            [
+                {
+                    "field": "new_password",
+                    "code": "password_same_as_current",
+                    "message": "Новый пароль должен отличаться от текущего.",
+                }
+            ],
         )
     user.password_hash = hash_password(new)
     revoked = _revoke_sessions(db, user.id, except_id=principal.session_id)

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button, ErrorState, Skeleton } from "@/components/ui";
-import { ru } from "@/i18n/ru";
+import { useT } from "@/i18n/LocaleProvider";
 import { rememberOrg, useSession } from "@/lib/session";
 
 export default function OrgLayout({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const { orgId } = useParams<{ orgId: string }>();
   const router = useRouter();
   const pathname = usePathname();
@@ -37,39 +39,40 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-dot" aria-hidden />
-          {ru.brand}
+          {t.brand}
         </div>
-        <nav className="nav" aria-label={ru.shell.navLabel}>
-          <Link href={home} aria-current={pathname === home ? "page" : undefined}>{ru.shell.home}</Link>
+        <nav className="nav" aria-label={t.shell.navLabel}>
+          <Link href={home} aria-current={pathname === home ? "page" : undefined}>{t.shell.home}</Link>
           {current?.permissions.includes("members.read") ? (
-            <Link href={membersHref} aria-current={pathname === membersHref ? "page" : undefined}>{ru.members.navLabel}</Link>
+            <Link href={membersHref} aria-current={pathname === membersHref ? "page" : undefined}>{t.members.navLabel}</Link>
           ) : null}
           {current?.permissions.includes("audit.read") ? (
-            <Link href={auditHref} aria-current={pathname === auditHref ? "page" : undefined}>{ru.audit.navLabel}</Link>
+            <Link href={auditHref} aria-current={pathname === auditHref ? "page" : undefined}>{t.audit.navLabel}</Link>
           ) : null}
-          <Link href={accountHref} aria-current={pathname === accountHref ? "page" : undefined}>{ru.account.navLabel}</Link>
+          <Link href={accountHref} aria-current={pathname === accountHref ? "page" : undefined}>{t.account.navLabel}</Link>
         </nav>
       </aside>
       <div className="main">
         <header className="topbar">
           <label>
-            <span className="muted" style={{ marginRight: 8 }}>{ru.shell.organization}</span>
+            <span className="muted" style={{ marginRight: 8 }}>{t.shell.organization}</span>
             <select
               value={orgs.some((o) => o.id === orgId) ? orgId : ""}
               onChange={(e) => router.push(e.target.value === NEW_ORG ? "/onboarding" : `/o/${e.target.value}`)}
-              aria-label={ru.shell.organization}
+              aria-label={t.shell.organization}
             >
               {!orgs.some((o) => o.id === orgId) ? <option value="" disabled>—</option> : null}
               {orgs.map((o) => (
                 <option key={o.id} value={o.id}>{o.name}</option>
               ))}
-              <option value={NEW_ORG}>{ru.shell.newOrg}</option>
+              <option value={NEW_ORG}>{t.shell.newOrg}</option>
             </select>
           </label>
           <div className="topbar-user">
+            <LanguageSwitcher />
             <span className="muted">{user.full_name}</span>
             <Button variant="secondary" onClick={async () => { await logout(); router.replace("/login"); }}>
-              {ru.common.logout}
+              {t.common.logout}
             </Button>
           </div>
         </header>
@@ -78,9 +81,9 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
             children
           ) : (
             <div className="card">
-              <h1>{ru.dashboard.notFoundTitle}</h1>
-              <p className="muted">{ru.dashboard.notFoundBody}</p>
-              <Link href="/">{ru.dashboard.toRoot}</Link>
+              <h1>{t.dashboard.notFoundTitle}</h1>
+              <p className="muted">{t.dashboard.notFoundBody}</p>
+              <Link href="/">{t.dashboard.toRoot}</Link>
             </div>
           )}
         </main>

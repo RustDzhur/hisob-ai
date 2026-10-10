@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { ru } from "@/i18n/ru";
+import { useT } from "@/i18n/LocaleProvider";
+import { errorText } from "@/i18n/errors";
 import type { ApiError } from "@/lib/api";
 
 export function Button({
@@ -58,17 +59,18 @@ export function Banner({ kind = "error", children }: { kind?: "error" | "info"; 
 }
 
 export function ErrorState({ error, onRetry }: { error: ApiError; onRetry?: () => void }) {
+  const t = useT();
   return (
     <div className="state">
-      <Banner>{error.message}</Banner>
+      <Banner>{errorText(t, error)}</Banner>
       {error.correlationId ? (
         <p className="hint">
-          {ru.common.errorId}: <code>{error.correlationId}</code>
+          {t.common.errorId}: <code>{error.correlationId}</code>
         </p>
       ) : null}
       {onRetry ? (
         <Button variant="secondary" onClick={onRetry}>
-          {ru.common.retry}
+          {t.common.retry}
         </Button>
       ) : null}
     </div>
@@ -76,8 +78,9 @@ export function ErrorState({ error, onRetry }: { error: ApiError; onRetry?: () =
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {
+  const t = useT();
   return (
-    <div className="skeleton" aria-busy aria-label={ru.common.loading}>
+    <div className="skeleton" aria-busy aria-label={t.common.loading}>
       {Array.from({ length: lines }, (_, i) => (
         <div key={i} className="skeleton-line" />
       ))}
@@ -102,6 +105,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -115,7 +119,7 @@ export function ConfirmDialog({
       <p className="muted">{body}</p>
       <div className="dialog-actions">
         <Button variant="secondary" onClick={onCancel}>
-          {ru.members.cancel}
+          {t.members.cancel}
         </Button>
         <Button onClick={onConfirm} loading={busy}>
           {confirmLabel}

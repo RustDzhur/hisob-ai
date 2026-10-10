@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, ApiError, type Organization, type User } from "./api";
+import { api, ApiError, toApiError, type Organization, type User } from "./api";
 
 type State =
   | { status: "loading" }
@@ -22,7 +22,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setState({ status: "ready", user, orgs });
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) setState({ status: "anon" });
-      else setState({ status: "error", error: e instanceof ApiError ? e : new ApiError(0, "unknown", "Неизвестная ошибка.") });
+      else setState({ status: "error", error: toApiError(e) });
     }
   }, []);
 

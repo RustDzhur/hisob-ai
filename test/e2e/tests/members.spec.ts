@@ -1,3 +1,4 @@
+import { newContext } from "./helpers";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
 const PASSWORD = "correct horse battery";
@@ -11,7 +12,7 @@ async function register(page: Page, email: string, name = "Тест Тестов
 }
 
 async function ownerWithOrg(browser: Browser) {
-  const ctx = await browser.newContext();
+  const ctx = await newContext(browser);
   const page = await ctx.newPage();
   const email = `owner-${uniq()}@example.uz`;
   await page.goto("/register");
@@ -41,7 +42,7 @@ test("приглашение: ссылка -> регистрация -> прин
   await expect(owner.page.getByText("Письмо не отправляется")).toBeVisible();
 
   // приглашённый: ссылка -> регистрация (возврат на приглашение) -> принять
-  const mctx = await browser.newContext();
+  const mctx = await newContext(browser);
   const m = await mctx.newPage();
   await m.goto(link);
   await expect(m.getByText("Бухгалтер")).toBeVisible();
@@ -106,7 +107,7 @@ test("приглашение нельзя принять чужим аккаун
   const invitee = `inv-${uniq()}@example.uz`;
   const link = await createInvite(owner.page, owner.orgUrl, invitee, "Аудитор (только чтение)");
 
-  const sctx = await browser.newContext();
+  const sctx = await newContext(browser);
   const s = await sctx.newPage();
   await s.goto(`/register?next=${encodeURIComponent(new URL(link).pathname)}`);
   await register(s, `other-${uniq()}@example.uz`, "Посторонний");

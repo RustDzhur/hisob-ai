@@ -20,20 +20,20 @@ def _tin(v: str | None) -> str | None:
     # Предварительная проверка формата (только цифры). Точные правила ИНН/СТИР
     # подтверждает бухгалтер (Q9) — до этого длина не фиксируется жёстко.
     if not _TIN_RE.match(v):
-        raise ValueError("ИНН/СТИР: только цифры, 9–14 знаков.")
+        raise ValueError("tin_invalid")
     return v
 
 
 def _tz(v: str) -> str:
     if v not in zoneinfo.available_timezones():
-        raise ValueError("Неизвестный часовой пояс.")
+        raise ValueError("timezone_unknown")
     return v
 
 
 def _ccy(v: str) -> str:
     v = v.strip().upper()
     if not _CCY_RE.match(v):
-        raise ValueError("Код валюты: 3 латинские буквы (например, UZS).")
+        raise ValueError("currency_invalid")
     return v
 
 

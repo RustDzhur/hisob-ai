@@ -60,7 +60,13 @@ def list_events(
             422,
             "validation_error",
             "Дата «с» позже даты «по».",
-            [{"field": "date_from", "message": "Дата «с» позже даты «по»."}],
+            [
+                {
+                    "field": "date_from",
+                    "code": "date_range_invalid",
+                    "message": "Дата «с» позже даты «по».",
+                }
+            ],
         )
     tz = zoneinfo.ZoneInfo(access.org.timezone)
     conds = _filters(org_id, tz, action, actor_user_id, date_from, date_to)

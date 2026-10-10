@@ -1,4 +1,9 @@
-export type FieldError = { field: string; message: string };
+export type FieldError = {
+  field: string;
+  message: string;
+  code?: string;
+  params?: Record<string, unknown>;
+};
 
 export class ApiError extends Error {
   constructor(
@@ -47,7 +52,7 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
       credentials: "same-origin",
     });
   } catch {
-    throw new ApiError(0, "network", "Нет связи с сервером. Проверьте подключение и повторите.");
+    throw new ApiError(0, "network", "Cannot reach the server.");
   }
   if (res.status === 204) return undefined as T;
 
@@ -56,7 +61,7 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
     throw new ApiError(
       res.status,
       data?.code ?? "http_error",
-      data?.message ?? "Не удалось выполнить запрос.",
+      data?.message ?? "The request could not be completed.",
       data?.details ?? [],
       data?.correlation_id ?? res.headers.get("x-correlation-id"),
     );
@@ -64,9 +69,8 @@ export async function api<T>(path: string, opts: Options = {}): Promise<T> {
   return data as T;
 }
 
-export function fieldErrors(err: unknown): Record<string, string> {
-  if (!(err instanceof ApiError)) return {};
-  return Object.fromEntries(err.details.map((d) => [d.field, d.message]));
+export function toApiError(e: unknown): ApiError {
+  return e instanceof ApiError ? e : new ApiError(0, "unknown", "Unknown error.");
 }
 
 export type Member = {

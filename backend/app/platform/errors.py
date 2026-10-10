@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -39,6 +40,23 @@ def error_body(
     }
 
 
+_PYDANTIC_CODES = {
+    "missing": "required",
+    "string_too_short": "too_short",
+    "string_too_long": "too_long",
+}
+
+
+def _detail_code(err: Any) -> str:
+    """Устойчивый код ошибки поля для локализации на клиенте."""
+    if err["type"] == "value_error":
+        raised = str(err.get("ctx", {}).get("error", ""))
+        if re.fullmatch(r"[a-z][a-z0-9_]{2,40}", raised):
+            return raised  # наши валидаторы бросают ValueError("tin_invalid") и т.п.
+        return "invalid"
+    return _PYDANTIC_CODES.get(str(err["type"]), "invalid")
+
+
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
@@ -51,7 +69,11 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
         details = [
-            {"field": ".".join(str(p) for p in e["loc"] if p != "body"), "message": e["msg"]}
+            {
+                "field": ".".join(str(p) for p in e["loc"] if p != "body"),
+                "code": _detail_code(e),
+                "message": e["msg"],
+            }
             for e in exc.errors()
         ]
         return JSONResponse(
