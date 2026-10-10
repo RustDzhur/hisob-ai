@@ -267,14 +267,17 @@ export type AIStatus = { configured: boolean; provider: string | null; model: st
 // ---------------- склад (срез 4.1) ----------------
 export type NameRef = { id: string; name: string };
 export type UnitRef = { code: string; name_uz: string | null; name_ru: string | null; name_en: string | null };
-export type StockBalance = { warehouse: NameRef; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string };
+export type StockBalance = {
+  warehouse: NameRef; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string;
+  reserved: string; available: string; min_quantity: string | null; low: boolean;
+};
 export type StockMovement = {
   id: string; operation_id: string; kind: string; reference: string | null; warehouse: NameRef; product_id: string;
   sku: string; name: string; unit: UnitRef; quantity_delta: string; op_date: string; occurred_at: string;
 };
 export type StockLine = { position: number; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string };
 export type StockOperation = {
-  id: string; kind: "receipt" | "issue" | "transfer" | "supplier_return" | "customer_return"; status: "DRAFT" | "POSTED"; op_date: string; warehouse: NameRef;
+  id: string; kind: "receipt" | "issue" | "transfer" | "supplier_return" | "customer_return" | "count_adjustment"; status: "DRAFT" | "POSTED"; op_date: string; warehouse: NameRef;
   to_warehouse: NameRef | null; reference: string | null; notes: string | null; version: number; lines: StockLine[];
   source_document: { id: string; number: string | null; doc_type: string } | null; reverses_id: string | null; reversed_by_id: string | null;
   created_by_name: string | null; posted_by_name: string | null; posted_at: string | null; created_at: string; updated_at: string;
@@ -286,4 +289,17 @@ export type StockOperationItem = {
 export type Reconciliation = {
   ok: boolean; checked_pairs: number;
   mismatches: { warehouse: NameRef; product_id: string; sku: string; name: string; balance: string; movements_sum: string }[];
+};
+
+export type StockCountLine = {
+  product_id: string; sku: string; name: string; unit: UnitRef; expected_quantity: string; counted_quantity: string | null; applied_delta: string | null;
+};
+export type StockCount = {
+  id: string; status: "IN_PROGRESS" | "POSTED"; warehouse: NameRef; notes: string | null; version: number; operation_id: string | null;
+  lines: StockCountLine[]; created_by_name: string | null; posted_by_name: string | null; posted_at: string | null; created_at: string; updated_at: string;
+};
+export type StockCountItem = { id: string; status: string; warehouse_name: string; lines_count: number; counted_count: number; created_at: string; posted_at: string | null };
+export type StockReservation = {
+  id: string; warehouse: NameRef; product_id: string; sku: string; name: string; unit: UnitRef; quantity: string; reason: string | null;
+  status: "ACTIVE" | "RELEASED"; created_by_name: string | null; created_at: string; released_at: string | null;
 };

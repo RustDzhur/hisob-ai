@@ -248,3 +248,93 @@ test("склад по документу: оформление, проведен
   await expect(o.page.getByText("Остатков пока нет. Оформите приход.")).toBeVisible(); // остаток вернулся к нулю
   await o.ctx.close();
 });
+
+async function receiptViaApi(o: Org, productId: string, quantity: string) {
+  const wh = await (await o.page.request.get(`/api/v1/organizations/${o.orgId}/warehouses`)).json();
+  const op = await apiPost(o, "/stock/operations", {
+    kind: "receipt", op_date: "2026-10-01", warehouse_id: wh.items[0].id, lines: [{ product_id: productId, quantity }],
+  });
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const r = await o.page.request.post(`/api/v1/organizations/${o.orgId}/stock/operations/${op.id}/post`, { data: { expected_version: op.version }, headers: { "X-CSRF-Token": csrf } });
+  expect(r.status()).toBe(200);
+}
+
+test("инвентаризация: пересчёт, разница, проведение корректировкой", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  const { productId } = await seedWithIds(o);
+  await receiptViaApi(o, productId, "10");
+
+  await o.page.goto(`${o.orgUrl}/stock/counts`);
+  await expect(o.page.getByText("Инвентаризаций пока нет.")).toBeVisible();
+  await o.page.getByRole("button", { name: "Начать инвентаризацию" }).first().click();
+  await o.page.getByRole("dialog").getByLabel("Склад", { exact: true }).selectOption({ label: "Основной склад" });
+  await o.page.getByRole("dialog").getByRole("button", { name: "Начать инвентаризацию" }).click();
+  await expect(o.page).toHaveURL(/\/stock\/counts\/[0-9a-f-]{36}$/);
+  await expect(o.page.getByRole("row", { name: /MILK-1/ })).toContainText("10");
+
+  await o.page.getByLabel("Фактически: MILK-1").fill("8");
+  await expect(o.page.getByRole("row", { name: /MILK-1/ })).toContainText("-2");
+  await expect(o.page.getByRole("button", { name: "Провести", exact: true })).toBeDisabled(); // сначала сохранить
+  await o.page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(o.page.getByText("Сохранено.")).toBeVisible();
+  await o.page.getByRole("button", { name: "Провести", exact: true }).click();
+  await o.page.getByRole("dialog").getByRole("button", { name: "Провести" }).click();
+  await expect(o.page.getByText(/Инвентаризация проведена\./)).toBeVisible();
+  await expect(o.page.getByRole("link", { name: "Корректирующая операция" })).toBeVisible();
+
+  await o.page.goto(`${o.orgUrl}/stock`);
+  await expect(o.page.getByText(/^8$/).first()).toBeVisible();
+  await o.ctx.close();
+});
+
+test("минимальный запас и резерв: пометка, нехватка свободного остатка, снятие резерва", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  const { productId } = await seedWithIds(o);
+  await receiptViaApi(o, productId, "10");
+
+  await o.page.goto(`${o.orgUrl}/stock`);
+  const row = o.page.getByRole("row", { name: /MILK-1/ });
+  await row.getByRole("button", { name: "Мин. запас" }).click();
+  await o.page.getByLabel("Мин. запас", { exact: true }).fill("12");
+  await o.page.getByRole("dialog").getByRole("button", { name: "Сохранить" }).click();
+  await expect(o.page.getByRole("row", { name: /MILK-1/ })).toContainText("Ниже минимума");
+  await expect(o.page.getByText("Позиций ниже минимального запаса: 1.")).toBeVisible();
+
+  await o.page.getByRole("row", { name: /MILK-1/ }).getByRole("button", { name: "Резерв" }).click();
+  await o.page.getByLabel("Количество", { exact: true }).fill("7");
+  await o.page.getByLabel("Основание (заказ, клиент)").fill("заказ 15");
+  await o.page.getByRole("dialog").getByRole("button", { name: "Зарезервировать" }).click();
+  await expect(o.page.getByRole("row", { name: /MILK-1/ })).toContainText("3"); // доступно 3
+
+  // расход 5 при доступных 3 — отказ с причиной
+  await newOperation(o.page, o.orgUrl, "Расход", "5");
+  await o.page.getByRole("button", { name: "Провести", exact: true }).click();
+  await o.page.getByRole("dialog").getByRole("button", { name: "Провести" }).click();
+  await expect(o.page.getByText("Недостаточно остатка для проведения.")).toBeVisible();
+  const opUrl = o.page.url();
+
+  // снять резерв -> расход проводится
+  await o.page.goto(`${o.orgUrl}/stock/reservations`);
+  await expect(o.page.getByText("заказ 15")).toBeVisible();
+  await o.page.getByRole("button", { name: "Снять резерв" }).first().click();
+  await o.page.getByRole("dialog").getByRole("button", { name: "Снять резерв" }).click();
+  await expect(o.page.getByText("Активных резервов нет.")).toBeVisible();
+  await o.page.goto(opUrl);
+  await o.page.getByRole("button", { name: "Провести", exact: true }).click();
+  await o.page.getByRole("dialog").getByRole("button", { name: "Провести" }).click();
+  await expect(o.page.getByRole("heading", { name: /Расход/ })).toContainText("Проведена");
+  await o.ctx.close();
+});
+
+test("инвентаризация и резервы на узбекском и английском", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  await o.page.goto(`${o.orgUrl}/stock/counts`);
+  await o.page.getByLabel("Язык").selectOption("uz");
+  await expect(o.page.getByRole("heading", { name: "Inventarizatsiyalar" })).toBeVisible();
+  await expect(o.page.getByText("Hozircha inventarizatsiyalar yoʻq.")).toBeVisible();
+  await o.page.goto(`${o.orgUrl}/stock/reservations`);
+  await expect(o.page.getByText("Faol zaxiralar yoʻq.")).toBeVisible();
+  await o.page.getByLabel("Til").selectOption("en");
+  await expect(o.page.getByText("No active reservations.")).toBeVisible();
+  await o.ctx.close();
+});

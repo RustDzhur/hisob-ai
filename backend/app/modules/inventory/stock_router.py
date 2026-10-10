@@ -48,9 +48,16 @@ def balances(
     lq: ListParams,
     warehouse_id: Annotated[uuid.UUID | None, Query()] = None,
     include_zero: Annotated[bool, Query()] = False,
+    low_only: Annotated[bool, Query()] = False,
 ) -> Page[BalanceOut]:
     return svc.list_balances(
-        db, principal, org_id, lq, warehouse_id=warehouse_id, include_zero=include_zero
+        db,
+        principal,
+        org_id,
+        lq,
+        warehouse_id=warehouse_id,
+        include_zero=include_zero,
+        low_only=low_only,
     )
 
 
@@ -83,7 +90,10 @@ def list_operations(
     lq: ListParams,
     status: Annotated[Literal["all", "DRAFT", "POSTED"], Query()] = "all",
     kind: Annotated[
-        Literal["receipt", "issue", "transfer", "supplier_return", "customer_return"] | None,
+        Literal[
+            "receipt", "issue", "transfer", "supplier_return", "customer_return", "count_adjustment"
+        ]
+        | None,
         Query(),
     ] = None,
     warehouse_id: Annotated[uuid.UUID | None, Query()] = None,

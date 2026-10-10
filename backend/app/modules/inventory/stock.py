@@ -26,9 +26,11 @@ from app.modules.identity.models import User
 from app.modules.identity.service import Principal
 from app.modules.inventory.models import (
     StockBalance,
+    StockMinLevel,
     StockMovement,
     StockOperation,
     StockOperationLine,
+    StockReservation,
     Warehouse,
 )
 from app.modules.inventory.schemas import (
@@ -540,13 +542,30 @@ def post_operation(
     return _out(db, op)
 
 
+def reserved_total(
+    db: Session, org_id: uuid.UUID, warehouse_id: uuid.UUID, product_id: uuid.UUID
+) -> Decimal:
+    """Сумма действующих резервов по паре (склад, товар)."""
+    total = db.scalar(
+        select(func.coalesce(func.sum(StockReservation.quantity), 0)).where(
+            StockReservation.organization_id == org_id,
+            StockReservation.warehouse_id == warehouse_id,
+            StockReservation.product_id == product_id,
+            StockReservation.status == "ACTIVE",
+        )
+    )
+    return Decimal(total or 0)
+
+
 def _legs(
     kind: str, wh: uuid.UUID, to: uuid.UUID | None, qty: Decimal, reverse: bool
 ) -> list[tuple[uuid.UUID, Decimal]]:
     """Изменения по складам для одной строки. Приход и возврат от клиента увеличивают, расход и возврат
     поставщику уменьшают; перемещение — с одного склада на другой. Сторно меняет знаки."""
     legs: list[tuple[uuid.UUID, Decimal]]
-    if kind in ("receipt", "customer_return"):
+    if kind == "count_adjustment":  # количество уже со знаком (расхождение инвентаризации)
+        legs = [(wh, qty)]
+    elif kind in ("receipt", "customer_return"):
         legs = [(wh, qty)]
     elif kind in ("issue", "supplier_return"):
         legs = [(wh, -qty)]
@@ -600,16 +619,22 @@ def _apply_posting(
             .with_for_update()
         )
         assert bal is not None
-        new_qty = bal.quantity + totals[(wid, pid)]
-        if new_qty < 0 and forbid_negative:
-            shortages.append(
-                {
-                    "warehouse_id": str(wid),
-                    "product_id": str(pid),
-                    "available": qty_str(bal.quantity),
-                    "required": qty_str(-totals[(wid, pid)]),
-                }
-            )
+        delta = totals[(wid, pid)]
+        new_qty = bal.quantity + delta
+        if delta < 0 and forbid_negative and op.kind != "count_adjustment":
+            # резервы под замком остатка: уменьшать можно только то, что не зарезервировано;
+            # физическая корректировка инвентаризации резервами не ограничивается
+            reserved = reserved_total(db, org_id, wid, pid)
+            if new_qty < reserved:
+                shortages.append(
+                    {
+                        "warehouse_id": str(wid),
+                        "product_id": str(pid),
+                        "available": qty_str(bal.quantity - reserved),
+                        "required": qty_str(-delta),
+                        "reserved": qty_str(reserved),
+                    }
+                )
         bal.quantity = new_qty
     if shortages:
         db.rollback()
@@ -812,7 +837,10 @@ def reverse_operation(
         orig.kind,
         orig.warehouse_id,
         orig.to_warehouse_id,
-        [StockLineIn(product_id=ln.product_id, quantity=ln.quantity) for ln in src_lines],
+        [
+            StockLineIn.model_construct(product_id=ln.product_id, quantity=ln.quantity)
+            for ln in src_lines  # строки корректировки бывают со знаком: валидатор ввода не нужен
+        ],
         reversal=True,
     )
     rev = StockOperation(
@@ -840,6 +868,7 @@ def reverse_operation(
             position=ln.position,
             product_id=ln.product_id,
             quantity=ln.quantity,
+            is_adjustment=ln.is_adjustment,
         )
         for ln in src_lines
     ]
@@ -870,10 +899,28 @@ def list_balances(
     *,
     warehouse_id: uuid.UUID | None,
     include_zero: bool,
+    low_only: bool = False,
 ) -> Page[BalanceOut]:
     authorize(db, principal, org_id, rbac.STOCK_READ)
+    reserved_sq = (
+        select(
+            StockReservation.warehouse_id.label("w"),
+            StockReservation.product_id.label("p"),
+            func.sum(StockReservation.quantity).label("r"),
+        )
+        .where(StockReservation.organization_id == org_id, StockReservation.status == "ACTIVE")
+        .group_by(StockReservation.warehouse_id, StockReservation.product_id)
+        .subquery()
+    )
     stmt: Any = (
-        select(StockBalance, Product, Warehouse, UnitOfMeasure)
+        select(
+            StockBalance,
+            Product,
+            Warehouse,
+            UnitOfMeasure,
+            func.coalesce(reserved_sq.c.r, 0),
+            StockMinLevel.min_quantity,
+        )
         .join(
             Product,
             (Product.id == StockBalance.product_id)
@@ -885,18 +932,36 @@ def list_balances(
             & (Warehouse.organization_id == StockBalance.organization_id),
         )
         .join(UnitOfMeasure, UnitOfMeasure.id == Product.unit_id)
+        .outerjoin(
+            reserved_sq,
+            (reserved_sq.c.w == StockBalance.warehouse_id)
+            & (reserved_sq.c.p == StockBalance.product_id),
+        )
+        .outerjoin(
+            StockMinLevel,
+            (StockMinLevel.organization_id == StockBalance.organization_id)
+            & (StockMinLevel.warehouse_id == StockBalance.warehouse_id)
+            & (StockMinLevel.product_id == StockBalance.product_id),
+        )
         .where(StockBalance.organization_id == org_id)
     )
     if warehouse_id:
         stmt = stmt.where(StockBalance.warehouse_id == warehouse_id)
-    if not include_zero:
+    if low_only:
+        stmt = stmt.where(
+            StockMinLevel.min_quantity.is_not(None),
+            StockBalance.quantity < StockMinLevel.min_quantity,
+        )
+    elif not include_zero:
         stmt = stmt.where(StockBalance.quantity != 0)
     stmt = search(stmt, lq.q, Product.sku, Product.name)
-    # paginate ожидает select одной сущности: берём пары ключей и догружаем
+    # paginate ожидает select одной сущности: считаем по ключам и догружаем страницу
     key_stmt = stmt.with_only_columns(StockBalance.warehouse_id, StockBalance.product_id)
     page_rows, total = _paginate_rows(db, stmt, key_stmt, lq)
-    return Page[BalanceOut](
-        items=[
+    items: list[BalanceOut] = []
+    for b, p, w, u, reserved, min_q in page_rows:
+        reserved = Decimal(reserved or 0)
+        items.append(
             BalanceOut(
                 warehouse=NameRef(id=w.id, name=str(w.name)),
                 product_id=p.id,
@@ -904,13 +969,13 @@ def list_balances(
                 name=p.name,
                 unit=_unit_ref(u),
                 quantity=qty_str(b.quantity),
+                reserved=qty_str(reserved),
+                available=qty_str(b.quantity - reserved),
+                min_quantity=qty_str(min_q) if min_q is not None else None,
+                low=min_q is not None and b.quantity < min_q,
             )
-            for b, p, w, u in page_rows
-        ],
-        total=total,
-        page=lq.page,
-        page_size=lq.page_size,
-    )
+        )
+    return Page[BalanceOut](items=items, total=total, page=lq.page, page_size=lq.page_size)
 
 
 def _paginate_rows(db: Session, stmt: Any, key_stmt: Any, lq: ListQuery) -> tuple[list[Any], int]:

@@ -59,7 +59,7 @@ class WarehouseOut(BaseModel):
 # ---------------- склад: операции, остатки, движения (срез 4.1) ----------------
 
 OpKind = Literal["receipt", "issue", "transfer", "supplier_return", "customer_return"]
-# инвентаризационная корректировка появится в срезе 4.3
+# count_adjustment создаётся только проведением инвентаризации
 
 
 def _no_float(v: Any) -> Any:
@@ -77,6 +77,12 @@ PositiveQty = Annotated[
     Decimal,
     BeforeValidator(_no_float),
     Field(gt=0, max_digits=20, decimal_places=6, allow_inf_nan=False),
+    AfterValidator(_fits),
+]
+NonNegativeQty = Annotated[
+    Decimal,
+    BeforeValidator(_no_float),
+    Field(ge=0, max_digits=20, decimal_places=6, allow_inf_nan=False),
     AfterValidator(_fits),
 ]
 Reference = Annotated[
@@ -202,6 +208,10 @@ class BalanceOut(BaseModel):
     name: str
     unit: UnitRef
     quantity: str
+    reserved: str
+    available: str
+    min_quantity: str | None
+    low: bool  # физический остаток ниже минимального запаса
 
 
 class MovementOut(BaseModel):
@@ -236,3 +246,90 @@ class ReconciliationOut(BaseModel):
 
 class StockSettings(BaseModel):
     negative_stock_policy: Literal["forbid", "allow"]
+
+
+# ---------------- инвентаризация ----------------
+
+
+class CountCreate(BaseModel):
+    warehouse_id: uuid.UUID
+    notes: Notes = None
+
+
+class CountLineIn(BaseModel):
+    product_id: uuid.UUID
+    counted_quantity: NonNegativeQty | None = None  # None — товар не пересчитан, не корректируется
+
+
+class CountUpdate(BaseModel):
+    """Частичное обновление: строки (если переданы) заменяются целиком; ожидаемое количество сохраняется."""
+
+    expected_version: int = Field(ge=1)
+    notes: Notes = None
+    lines: Annotated[list[CountLineIn], Field(max_length=2000)] | None = None
+
+
+class CountLineOut(BaseModel):
+    product_id: uuid.UUID
+    sku: str
+    name: str
+    unit: UnitRef
+    expected_quantity: str
+    counted_quantity: str | None
+    applied_delta: str | None
+
+
+class CountOut(BaseModel):
+    id: uuid.UUID
+    status: str
+    warehouse: NameRef
+    notes: str | None
+    version: int
+    operation_id: uuid.UUID | None
+    lines: list[CountLineOut]
+    created_by_name: str | None
+    posted_by_name: str | None
+    posted_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CountListItem(BaseModel):
+    id: uuid.UUID
+    status: str
+    warehouse_name: str
+    lines_count: int
+    counted_count: int
+    created_at: datetime
+    posted_at: datetime | None
+
+
+# ---------------- минимальный запас и резервы ----------------
+
+
+class MinLevelIn(BaseModel):
+    warehouse_id: uuid.UUID
+    product_id: uuid.UUID
+    min_quantity: PositiveQty | None  # None — снять минимальный запас
+
+
+class ReservationCreate(BaseModel):
+    warehouse_id: uuid.UUID
+    product_id: uuid.UUID
+    quantity: PositiveQty
+    reason: Reference = None
+
+
+class ReservationOut(BaseModel):
+    id: uuid.UUID
+    warehouse: NameRef
+    product_id: uuid.UUID
+    sku: str
+    name: str
+    unit: UnitRef
+    quantity: str
+    reason: str | None
+    status: str
+    created_by_name: str | None
+    created_at: datetime
+    released_at: datetime | None

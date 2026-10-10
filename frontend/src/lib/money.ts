@@ -36,3 +36,23 @@ export function formatQuantity(value: string, locale: Locale): string {
   const { group, decimal } = SEPARATORS[locale];
   return `${sign}${int.replace(/\B(?=(\d{3})+(?!\d))/g, group)}${frac ? decimal + frac : ""}`;
 }
+
+/**
+ * Разница «фактически − по учёту» для количеств с точностью до 6 знаков без float: считается в BigInt
+ * по масштабу 1e6. null — если пересчёт не введён или записан не как число.
+ */
+export function quantityDiff(counted: string, expected: string): string | null {
+  if (counted === "" || !/^\d+(\.\d{1,6})?$/.test(counted) || !/^-?\d+(\.\d+)?$/.test(expected)) return null;
+  const scale = (s: string) => {
+    const neg = s.startsWith("-");
+    const [i, f = ""] = s.replace("-", "").split(".");
+    const n = BigInt(i + f.padEnd(6, "0").slice(0, 6));
+    return neg ? -n : n;
+  };
+  const d = scale(counted) - scale(expected);
+  const zero = BigInt(0);
+  const sign = d < zero ? "-" : "";
+  const abs = (d < zero ? -d : d).toString().padStart(7, "0");
+  const frac = abs.slice(-6).replace(/0+$/, "");
+  return `${sign}${abs.slice(0, -6)}${frac ? "." + frac : ""}`;
+}

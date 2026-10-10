@@ -13,6 +13,8 @@ export function StockTabs() {
   const tabs = [
     { href: base, label: t.stock.balances, active: pathname === base },
     { href: `${base}/operations`, label: t.stock.operations, active: pathname.startsWith(`${base}/operations`) },
+    { href: `${base}/counts`, label: t.stock.counts, active: pathname.startsWith(`${base}/counts`) },
+    { href: `${base}/reservations`, label: t.stock.reservations, active: pathname === `${base}/reservations` },
     { href: `${base}/movements`, label: t.stock.movements, active: pathname === `${base}/movements` },
   ];
   return (
