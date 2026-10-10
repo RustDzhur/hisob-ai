@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     AfterValidator,
@@ -144,6 +144,19 @@ class LineOut(BaseModel):
     memo: str | None
 
 
+class SourceDoc(BaseModel):
+    id: uuid.UUID
+    number: str | None
+    doc_type: str
+
+
+class RuleRef(BaseModel):
+    id: uuid.UUID
+    key: str
+    version: int
+    name: str
+
+
 class EntryOut(BaseModel):
     id: uuid.UUID
     number: int
@@ -156,6 +169,8 @@ class EntryOut(BaseModel):
     created_by_name: str | None
     created_at: datetime
     total: str
+    source_document: SourceDoc | None = None
+    rule: RuleRef | None = None
     lines: list[LineOut]
 
 
@@ -217,3 +232,108 @@ class LedgerOut(BaseModel):
     opening_credit: str
     rows: list[LedgerRow]
     total: int
+
+
+# ---------------- правила проводок (срез 5.2) ----------------
+
+Side = Literal["debit", "credit"]
+AmountSource = Literal["total_amount", "tax_total", "total_minus_tax"]
+RuleKey = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+DocTypeName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=20)]
+
+
+class RuleLineIn(BaseModel):
+    account_id: uuid.UUID
+    side: Side
+    amount_source: AmountSource
+    memo: Memo = None
+
+
+class RuleCreate(BaseModel):
+    rule_key: RuleKey
+    name: Name
+    description: Notes = None
+    doc_type: DocTypeName
+    effective_from: date | None = None
+    effective_to: date | None = None
+    lines: Annotated[list[RuleLineIn], Field(min_length=2, max_length=50)]
+
+
+class RuleUpdate(BaseModel):
+    name: Name | None = None
+    description: Notes = None
+    doc_type: DocTypeName | None = None
+    effective_from: date | None = None
+    effective_to: date | None = None
+    lines: Annotated[list[RuleLineIn], Field(min_length=2, max_length=50)] | None = None
+
+
+class RuleApprove(BaseModel):
+    legal_basis: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)
+    ]
+
+
+class RuleLineOut(BaseModel):
+    position: int
+    account_id: uuid.UUID
+    account_code: str
+    account_name: str
+    side: str
+    amount_source: str
+    memo: str | None
+
+
+class RuleOut(BaseModel):
+    id: uuid.UUID
+    rule_key: str
+    version: int
+    name: str
+    description: str | None
+    doc_type: str
+    status: str
+    legal_basis: str | None
+    effective_from: date | None
+    effective_to: date | None
+    approved_by_name: str | None
+    approved_at: datetime | None
+    created_at: datetime
+    lines: list[RuleLineOut]
+
+
+class RuleListItem(BaseModel):
+    id: uuid.UUID
+    rule_key: str
+    version: int
+    name: str
+    doc_type: str
+    status: str
+    effective_from: date | None
+    effective_to: date | None
+    approved_at: datetime | None
+
+
+class ProposalLine(BaseModel):
+    account_id: uuid.UUID
+    account_code: str
+    account_name: str
+    debit: str
+    credit: str
+    memo: str | None
+
+
+class ProposalOut(BaseModel):
+    rule: RuleRef
+    legal_basis: str | None
+    entry_date: date | None
+    currency: str | None
+    description: str
+    lines: list[ProposalLine]
+    problems: list[str]  # коды причин, по которым провести нельзя
+    posted_entry_id: uuid.UUID | None  # уже проведено по этому правилу (и не сторнировано)
+
+
+class FromDocumentIn(BaseModel):
+    document_id: uuid.UUID
+    rule_id: uuid.UUID
+    entry_date: date | None = None

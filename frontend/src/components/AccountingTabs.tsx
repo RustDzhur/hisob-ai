@@ -12,6 +12,7 @@ export function AccountingTabs() {
   const tabs = [
     { href: base, label: t.accounting.entries, active: pathname === base || pathname.startsWith(`${base}/entries`) },
     { href: `${base}/accounts`, label: t.accounting.accounts, active: pathname.startsWith(`${base}/accounts`) },
+    { href: `${base}/rules`, label: t.accounting.rules, active: pathname.startsWith(`${base}/rules`) },
     { href: `${base}/periods`, label: t.accounting.periods, active: pathname === `${base}/periods` },
     { href: `${base}/trial-balance`, label: t.accounting.trial, active: pathname === `${base}/trial-balance` },
   ];

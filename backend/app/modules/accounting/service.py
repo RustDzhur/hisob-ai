@@ -24,6 +24,7 @@ from app.modules.accounting.models import (
     AccountingPeriod,
     JournalEntry,
     JournalLine,
+    PostingRule,
 )
 from app.modules.accounting.schemas import (
     AccountCreate,
@@ -38,10 +39,13 @@ from app.modules.accounting.schemas import (
     LineOut,
     PeriodCreate,
     PeriodOut,
+    RuleRef,
+    SourceDoc,
     TrialBalanceOut,
     TrialRow,
 )
 from app.modules.audit import service as audit
+from app.modules.documents.models import Document
 from app.modules.identity.models import User
 from app.modules.identity.service import Principal
 from app.modules.rbac import service as rbac
@@ -426,6 +430,12 @@ def _entry_out(db: Session, e: JournalEntry) -> EntryOut:
     name = db.scalar(select(User.full_name).where(User.id == e.created_by))
     rev_by = db.scalar(select(JournalEntry.id).where(JournalEntry.reverses_id == e.id))
     total = sum((ln.debit for ln, _ in rows), ZERO)
+    doc = (
+        db.scalar(select(Document).where(Document.id == e.source_id))
+        if e.source_type == "document" and e.source_id
+        else None
+    )
+    rule = db.get(PostingRule, e.rule_id) if e.rule_id else None
     return EntryOut(
         id=e.id,
         number=e.number,
@@ -438,6 +448,14 @@ def _entry_out(db: Session, e: JournalEntry) -> EntryOut:
         created_by_name=name,
         created_at=e.created_at,
         total=money(total, minor),
+        source_document=(
+            SourceDoc(id=doc.id, number=doc.number, doc_type=doc.doc_type) if doc else None
+        ),
+        rule=(
+            RuleRef(id=rule.id, key=rule.rule_key, version=rule.version, name=rule.name)
+            if rule
+            else None
+        ),
         lines=[
             LineOut(
                 position=ln.position,
@@ -536,6 +554,8 @@ def _insert_entry(
     lines: list[tuple[uuid.UUID, Decimal, Decimal, str | None]],
     *,
     reverses: uuid.UUID | None,
+    source: tuple[str, uuid.UUID, uuid.UUID, int]
+    | None = None,  # (тип, id источника, id правила, версия)
 ) -> EntryOut:
     period = _ensure_period(db, org_id, entry_date, lock_shared=True)
     if period.status != "OPEN":
@@ -550,6 +570,10 @@ def _insert_entry(
         currency=currency,
         description=description,
         reverses_id=reverses,
+        source_type=source[0] if source else None,
+        source_id=source[1] if source else None,
+        rule_id=source[2] if source else None,
+        rule_version=source[3] if source else None,
         created_by=principal.user.id,
     )
     db.add(e)
@@ -578,7 +602,13 @@ def _insert_entry(
         raise _fail(409, "entry_conflict", "Проводка уже оформлена (параллельный запрос).") from exc
     audit.record(
         db,
-        action="journal_entry.reversed" if reverses else "journal_entry.created",
+        action=(
+            "journal_entry.reversed"
+            if reverses
+            else "journal_entry.created_from_rule"
+            if source
+            else "journal_entry.created"
+        ),
         actor_user_id=principal.user.id,
         organization_id=org_id,
         object_type="journal_entry",

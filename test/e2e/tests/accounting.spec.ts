@@ -145,3 +145,84 @@ test("бухгалтерия на узбекском и английском", a
   await expect(o.page.getByText("No journal entries yet.")).toBeVisible();
   await o.ctx.close();
 });
+
+const pdfBytes = (tag: string) => Buffer.from(`%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n%${tag}\n`);
+
+async function apiJson(o: Org, method: "post" | "patch", path: string, data: unknown, status = 201) {
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const r = await o.page.request[method](`/api/v1/organizations/${o.orgId}${path}`, { data, headers: { "X-CSRF-Token": csrf } });
+  expect(r.status()).toBe(status);
+  return r.json();
+}
+
+test("правила проводок: ввод и утверждение бухгалтером, предложение и проведение по документу", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  for (const [code, name] of [["1000", "Покупатели"], ["2000", "Выручка"], ["3000", "Налог"]]) await apiJson(o, "post", "/accounting/accounts", { code, name });
+
+  await o.page.goto(`${o.orgUrl}/accounting/rules`);
+  await expect(o.page.getByText(/Правил пока нет/)).toBeVisible(); // готовых правил в системе нет
+  await o.page.getByRole("link", { name: "Новое правило" }).first().click();
+  await o.page.getByLabel("Ключ правила").fill("sales");
+  await o.page.getByLabel("Название", { exact: true }).fill("Реализация услуг");
+  await pickAccount(o.page, "Счёт 1", "1000");
+  await pickAccount(o.page, "Счёт 2", "2000");
+  await o.page.getByLabel("Сторона 2").selectOption("credit");
+  await o.page.getByLabel("Сумма из документа 2").selectOption("total_minus_tax");
+  // пока налоговой строки нет: Дт итого ≠ Кт итого минус налог — сохранить нельзя
+  await expect(o.page.getByTestId("rule-balance")).toContainText("должно быть сбалансировано");
+  await expect(o.page.getByRole("button", { name: "Сохранить" })).toBeDisabled();
+  await o.page.getByRole("button", { name: "Добавить строку" }).click();
+  await pickAccount(o.page, "Счёт 3", "3000");
+  await o.page.getByLabel("Сумма из документа 3").selectOption("tax_total");
+  await expect(o.page.getByTestId("rule-balance")).toContainText("Дебет и кредит равны.");
+  await o.page.getByRole("button", { name: "Сохранить" }).click();
+  await expect(o.page).toHaveURL(/\/accounting\/rules\/[0-9a-f-]{36}$/);
+  await expect(o.page.getByRole("heading", { name: /Реализация услуг/ })).toContainText("Черновик");
+
+  // утверждение требует основания
+  await o.page.getByRole("button", { name: "Утвердить", exact: true }).click();
+  const dialog = o.page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Утвердить" })).toBeDisabled();
+  await dialog.getByLabel("Основание").fill("Решение бухгалтера от 10.10.2026");
+  await dialog.getByRole("button", { name: "Утвердить" }).click();
+  await expect(o.page.getByRole("heading", { name: /Реализация услуг/ })).toContainText("Утверждено");
+  await expect(o.page.getByText("Утверждённое правило только для просмотра.")).toBeVisible();
+
+  // документ: итог 1120, налог 120
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const up = await o.page.request.post(`/api/v1/organizations/${o.orgId}/documents`, {
+    multipart: { file: { name: "inv.pdf", mimeType: "application/pdf", buffer: pdfBytes(uniq()) }, doc_type: "invoice" },
+    headers: { "X-CSRF-Token": csrf },
+  });
+  const doc = await up.json();
+  const cp = await apiJson(o, "post", "/counterparties", { name: "ООО Клиент", tin: "123456789" });
+  const patched = await apiJson(o, "patch", `/documents/${doc.id}`, {
+    expected_version: doc.version, doc_type: "invoice", number: "СФ-1", doc_date: "2026-10-05", counterparty_id: cp.id, currency: "UZS",
+    total_amount: "1120", tax_total: "120", lines: [{ description: "Услуга", quantity: "1", unit_price: "1000", amount: "1000" }],
+  }, 200);
+  await apiJson(o, "post", `/documents/${doc.id}/approve`, { expected_version: patched.version, acknowledged: [] }, 200);
+
+  await o.page.goto(`${o.orgUrl}/documents/${doc.id}`);
+  const panel = o.page.getByTestId("doc-journal");
+  await expect(panel.getByText("Реализация услуг")).toBeVisible();
+  await expect(panel.getByText(/1000 · Покупатели/)).toBeVisible();
+  await panel.getByRole("button", { name: "Провести по правилу" }).click();
+  await expect(panel.getByText("Уже проведено")).toBeVisible();
+  await panel.getByRole("link", { name: "Открыть проводку" }).click();
+  await expect(o.page.getByRole("heading", { name: /№ 1/ })).toContainText("Проведена");
+  await expect(o.page.getByText(/Документ-основание/)).toBeVisible();
+  await expect(o.page.getByText(/Правило: Реализация услуг/)).toBeVisible();
+  await o.ctx.close();
+});
+
+test("правила проводок на узбекском и английском", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+  await o.page.goto(`${o.orgUrl}/accounting/rules`);
+  await o.page.getByLabel("Язык").selectOption("uz");
+  await expect(o.page.getByRole("heading", { name: "Provodka qoidalari" })).toBeVisible();
+  await expect(o.page.getByText(/Hozircha qoidalar yoʻq/)).toBeVisible();
+  await o.page.getByLabel("Til").selectOption("en");
+  await expect(o.page.getByRole("heading", { name: "Posting rules" })).toBeVisible();
+  await expect(o.page.getByText(/No rules yet/)).toBeVisible();
+  await o.ctx.close();
+});

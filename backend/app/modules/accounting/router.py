@@ -2,9 +2,10 @@ import uuid
 from datetime import date
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
+from app.modules.accounting import rules as rules_svc
 from app.modules.accounting import service as svc
 from app.modules.accounting.schemas import (
     AccountCreate,
@@ -14,9 +15,16 @@ from app.modules.accounting.schemas import (
     EntryListItem,
     EntryOut,
     EntryReverse,
+    FromDocumentIn,
     LedgerOut,
     PeriodCreate,
     PeriodOut,
+    ProposalOut,
+    RuleApprove,
+    RuleCreate,
+    RuleListItem,
+    RuleOut,
+    RuleUpdate,
     TrialBalanceOut,
 )
 from app.modules.identity.deps import CurrentPrincipal
@@ -191,3 +199,91 @@ def trial_balance(
     return svc.trial_balance(
         db, principal, org_id, date_from=date_from, date_to=date_to, currency=currency
     )
+
+
+# ---------------- правила проводок (срез 5.2) ----------------
+
+
+@router.get("/rules", response_model=Page[RuleListItem])
+def list_rules(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    lq: ListParams,
+    status: Annotated[Literal["all", "DRAFT", "APPROVED", "RETIRED"], Query()] = "all",
+) -> Page[RuleListItem]:
+    return rules_svc.list_rules(db, principal, org_id, lq, status=status)
+
+
+@router.post("/rules", response_model=RuleOut, status_code=201)
+def create_rule(
+    org_id: uuid.UUID, body: RuleCreate, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> RuleOut:
+    return rules_svc.create_rule(db, principal, org_id, body)
+
+
+@router.get("/rules/{rule_id}", response_model=RuleOut)
+def get_rule(
+    org_id: uuid.UUID, rule_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession
+) -> RuleOut:
+    return rules_svc.get_rule(db, principal, org_id, rule_id)
+
+
+@router.patch("/rules/{rule_id}", response_model=RuleOut)
+def update_rule(
+    org_id: uuid.UUID,
+    rule_id: uuid.UUID,
+    body: RuleUpdate,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> RuleOut:
+    return rules_svc.update_rule(db, principal, org_id, rule_id, body)
+
+
+@router.delete("/rules/{rule_id}", status_code=204)
+def delete_rule(
+    org_id: uuid.UUID, rule_id: uuid.UUID, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> Response:
+    rules_svc.delete_rule(db, principal, org_id, rule_id)
+    return Response(status_code=204)
+
+
+@router.post("/rules/{rule_id}/approve", response_model=RuleOut)
+def approve_rule(
+    org_id: uuid.UUID,
+    rule_id: uuid.UUID,
+    body: RuleApprove,
+    principal: CurrentPrincipal,
+    _csrf: Csrf,
+    db: DbSession,
+) -> RuleOut:
+    return rules_svc.approve_rule(db, principal, org_id, rule_id, body)
+
+
+@router.post("/rules/{rule_id}/retire", response_model=RuleOut)
+def retire_rule(
+    org_id: uuid.UUID, rule_id: uuid.UUID, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> RuleOut:
+    return rules_svc.retire_rule(db, principal, org_id, rule_id)
+
+
+@router.post("/rules/{rule_id}/new-version", response_model=RuleOut, status_code=201)
+def new_rule_version(
+    org_id: uuid.UUID, rule_id: uuid.UUID, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> RuleOut:
+    return rules_svc.new_version(db, principal, org_id, rule_id)
+
+
+@router.get("/documents/{document_id}/proposals", response_model=list[ProposalOut])
+def document_proposals(
+    org_id: uuid.UUID, document_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession
+) -> list[ProposalOut]:
+    return rules_svc.document_proposals(db, principal, org_id, document_id)
+
+
+@router.post("/entries/from-document", response_model=EntryOut, status_code=201)
+def post_from_document(
+    org_id: uuid.UUID, body: FromDocumentIn, principal: CurrentPrincipal, _csrf: Csrf, db: DbSession
+) -> EntryOut:
+    return rules_svc.post_from_document(db, principal, org_id, body)

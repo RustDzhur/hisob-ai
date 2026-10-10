@@ -136,6 +136,12 @@ export default function EntryPage() {
         </div>
         <AccountingTabs />
         {actionError ? <Banner>{errorText(t, actionError)}</Banner> : null}
+        {entry.source_document ? (
+          <Banner kind="info">
+            {t.accounting.sourceDocument}: <Link href={`/o/${orgId}/documents/${entry.source_document.id}`}>{t.documents.types[entry.source_document.doc_type] ?? entry.source_document.doc_type}{entry.source_document.number ? ` № ${entry.source_document.number}` : ""}</Link>
+            {entry.rule ? <> · {t.accounting.appliedRule}: <Link href={`/o/${orgId}/accounting/rules/${entry.rule.id}`}>{entry.rule.name} ({t.accounting.ruleVersion} {entry.rule.version})</Link></> : null}
+          </Banner>
+        ) : null}
         {entry.reverses_id ? <Banner kind="info">{t.accounting.reversalOf}: <Link href={`/o/${orgId}/accounting/entries/${entry.reverses_id}`}>{t.accounting.open}</Link></Banner> : null}
         {entry.reversed_by_id ? <Banner kind="info">{t.accounting.reversedBy}: <Link href={`/o/${orgId}/accounting/entries/${entry.reversed_by_id}`}>{t.accounting.open}</Link></Banner> : null}
         <section className="card">

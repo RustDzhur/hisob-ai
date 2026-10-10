@@ -314,6 +314,7 @@ export type JournalLine = { position: number; account_id: string; account_code: 
 export type JournalEntry = {
   id: string; number: number; entry_date: string; currency: string; description: string; reverses_id: string | null;
   reversed_by_id: string | null; period_id: string; created_by_name: string | null; created_at: string; total: string; lines: JournalLine[];
+  source_document: { id: string; number: string | null; doc_type: string } | null; rule: { id: string; key: string; version: number; name: string } | null;
 };
 export type JournalEntryItem = { id: string; number: number; entry_date: string; currency: string; description: string; total: string; is_reversal: boolean; reversed: boolean };
 export type TrialRow = {
@@ -323,3 +324,15 @@ export type TrialRow = {
 export type TrialBalance = { currency: string; date_from: string; date_to: string; rows: TrialRow[]; totals: TrialRow | null; balanced: boolean };
 export type LedgerRow = { entry_id: string; number: number; entry_date: string; description: string; memo: string | null; debit: string; credit: string; balance_debit: string; balance_credit: string };
 export type Ledger = { account_id: string; code: string; name: string; currency: string; date_from: string; date_to: string; opening_debit: string; opening_credit: string; rows: LedgerRow[]; total: number };
+
+// ---------------- правила проводок (срез 5.2) ----------------
+export type RuleLine = { position: number; account_id: string; account_code: string; account_name: string; side: "debit" | "credit"; amount_source: "total_amount" | "tax_total" | "total_minus_tax"; memo: string | null };
+export type PostingRule = {
+  id: string; rule_key: string; version: number; name: string; description: string | null; doc_type: string; status: "DRAFT" | "APPROVED" | "RETIRED";
+  legal_basis: string | null; effective_from: string | null; effective_to: string | null; approved_by_name: string | null; approved_at: string | null; created_at: string; lines: RuleLine[];
+};
+export type PostingRuleItem = { id: string; rule_key: string; version: number; name: string; doc_type: string; status: string; effective_from: string | null; effective_to: string | null; approved_at: string | null };
+export type Proposal = {
+  rule: { id: string; key: string; version: number; name: string }; legal_basis: string | null; entry_date: string | null; currency: string | null; description: string;
+  lines: { account_id: string; account_code: string; account_name: string; debit: string; credit: string; memo: string | null }[]; problems: string[]; posted_entry_id: string | null;
+};

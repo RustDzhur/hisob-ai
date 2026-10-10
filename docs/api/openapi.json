@@ -1965,6 +1965,26 @@
             ],
             "title": "Reverses Id"
           },
+          "rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuleRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceDoc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "total": {
             "title": "Total",
             "type": "string"
@@ -2226,50 +2246,6 @@
           "inline"
         ],
         "title": "FileOut",
-        "type": "object"
-      },
-      "FromDocumentIn": {
-        "description": "Складская операция по утверждённому документу; направление выбирает человек.",
-        "properties": {
-          "document_id": {
-            "format": "uuid",
-            "title": "Document Id",
-            "type": "string"
-          },
-          "kind": {
-            "enum": [
-              "receipt",
-              "issue",
-              "supplier_return",
-              "customer_return"
-            ],
-            "title": "Kind",
-            "type": "string"
-          },
-          "op_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Op Date"
-          },
-          "warehouse_id": {
-            "format": "uuid",
-            "title": "Warehouse Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "document_id",
-          "kind",
-          "warehouse_id"
-        ],
-        "title": "FromDocumentIn",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -3678,6 +3654,37 @@
         "title": "Page[ReservationOut]",
         "type": "object"
       },
+      "Page_RuleListItem_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuleListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "Page[RuleListItem]",
+        "type": "object"
+      },
       "Page_WarehouseOut_": {
         "properties": {
           "items": {
@@ -4177,6 +4184,135 @@
         "title": "ProductUpdate",
         "type": "object"
       },
+      "ProposalLine": {
+        "properties": {
+          "account_code": {
+            "title": "Account Code",
+            "type": "string"
+          },
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_name": {
+            "title": "Account Name",
+            "type": "string"
+          },
+          "credit": {
+            "title": "Credit",
+            "type": "string"
+          },
+          "debit": {
+            "title": "Debit",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_code",
+          "account_name",
+          "debit",
+          "credit",
+          "memo"
+        ],
+        "title": "ProposalLine",
+        "type": "object"
+      },
+      "ProposalOut": {
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "entry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Date"
+          },
+          "legal_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Basis"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "posted_entry_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posted Entry Id"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "rule": {
+            "$ref": "#/components/schemas/RuleRef"
+          }
+        },
+        "required": [
+          "rule",
+          "legal_basis",
+          "entry_date",
+          "currency",
+          "description",
+          "lines",
+          "problems",
+          "posted_entry_id"
+        ],
+        "title": "ProposalOut",
+        "type": "object"
+      },
       "ReconciliationOut": {
         "properties": {
           "checked_pairs": {
@@ -4473,6 +4609,511 @@
         "title": "RoleOut",
         "type": "object"
       },
+      "RuleApprove": {
+        "properties": {
+          "legal_basis": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Legal Basis",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_basis"
+        ],
+        "title": "RuleApprove",
+        "type": "object"
+      },
+      "RuleCreate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "doc_type": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RuleLineIn"
+            },
+            "maxItems": 50,
+            "minItems": 2,
+            "title": "Lines",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "rule_key": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Rule Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_key",
+          "name",
+          "doc_type",
+          "lines"
+        ],
+        "title": "RuleCreate",
+        "type": "object"
+      },
+      "RuleLineIn": {
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount_source": {
+            "enum": [
+              "total_amount",
+              "tax_total",
+              "total_minus_tax"
+            ],
+            "title": "Amount Source",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "side": {
+            "enum": [
+              "debit",
+              "credit"
+            ],
+            "title": "Side",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "side",
+          "amount_source"
+        ],
+        "title": "RuleLineIn",
+        "type": "object"
+      },
+      "RuleLineOut": {
+        "properties": {
+          "account_code": {
+            "title": "Account Code",
+            "type": "string"
+          },
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_name": {
+            "title": "Account Name",
+            "type": "string"
+          },
+          "amount_source": {
+            "title": "Amount Source",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "side": {
+            "title": "Side",
+            "type": "string"
+          }
+        },
+        "required": [
+          "position",
+          "account_id",
+          "account_code",
+          "account_name",
+          "side",
+          "amount_source",
+          "memo"
+        ],
+        "title": "RuleLineOut",
+        "type": "object"
+      },
+      "RuleListItem": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rule_key": {
+            "title": "Rule Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "rule_key",
+          "version",
+          "name",
+          "doc_type",
+          "status",
+          "effective_from",
+          "effective_to",
+          "approved_at"
+        ],
+        "title": "RuleListItem",
+        "type": "object"
+      },
+      "RuleOut": {
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By Name"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "legal_basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Basis"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RuleLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rule_key": {
+            "title": "Rule Key",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "rule_key",
+          "version",
+          "name",
+          "description",
+          "doc_type",
+          "status",
+          "legal_basis",
+          "effective_from",
+          "effective_to",
+          "approved_by_name",
+          "approved_at",
+          "created_at",
+          "lines"
+        ],
+        "title": "RuleOut",
+        "type": "object"
+      },
+      "RuleRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "version",
+          "name"
+        ],
+        "title": "RuleRef",
+        "type": "object"
+      },
+      "RuleUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "effective_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective From"
+          },
+          "effective_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective To"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RuleLineIn"
+                },
+                "maxItems": 50,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "RuleUpdate",
+        "type": "object"
+      },
       "SessionOut": {
         "properties": {
           "created_at": {
@@ -4526,6 +5167,37 @@
           "current"
         ],
         "title": "SessionOut",
+        "type": "object"
+      },
+      "SourceDoc": {
+        "properties": {
+          "doc_type": {
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Number"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "doc_type"
+        ],
+        "title": "SourceDoc",
         "type": "object"
       },
       "StockLineIn": {
@@ -5139,6 +5811,38 @@
         "title": "WarehouseUpdate",
         "type": "object"
       },
+      "app__modules__accounting__schemas__FromDocumentIn": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "entry_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Date"
+          },
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "rule_id"
+        ],
+        "title": "FromDocumentIn",
+        "type": "object"
+      },
       "app__modules__accounting__schemas__LineIn": {
         "properties": {
           "account_id": {
@@ -5516,6 +6220,50 @@
           "amount"
         ],
         "title": "LineOut",
+        "type": "object"
+      },
+      "app__modules__inventory__schemas__FromDocumentIn": {
+        "description": "Складская операция по утверждённому документу; направление выбирает человек.",
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "receipt",
+              "issue",
+              "supplier_return",
+              "customer_return"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "op_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Op Date"
+          },
+          "warehouse_id": {
+            "format": "uuid",
+            "title": "Warehouse Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "kind",
+          "warehouse_id"
+        ],
+        "title": "FromDocumentIn",
         "type": "object"
       }
     }
@@ -6485,6 +7233,63 @@
         ]
       }
     },
+    "/api/v1/organizations/{org_id}/accounting/documents/{document_id}/proposals": {
+      "get": {
+        "operationId": "document_proposals_api_v1_organizations__org_id__accounting_documents__document_id__proposals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProposalOut"
+                  },
+                  "title": "Response Document Proposals Api V1 Organizations  Org Id  Accounting Documents  Document Id  Proposals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Document Proposals",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
     "/api/v1/organizations/{org_id}/accounting/entries": {
       "get": {
         "operationId": "list_entries_api_v1_organizations__org_id__accounting_entries_get",
@@ -6720,6 +7525,59 @@
           }
         },
         "summary": "Create Entry",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/accounting/entries/from-document": {
+      "post": {
+        "operationId": "post_from_document_api_v1_organizations__org_id__accounting_entries_from_document_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__modules__accounting__schemas__FromDocumentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post From Document",
         "tags": [
           "accounting"
         ]
@@ -7120,6 +7978,521 @@
           }
         },
         "summary": "Trial Balance",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/accounting/rules": {
+      "get": {
+        "operationId": "list_rules_api_v1_organizations__org_id__accounting_rules_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "DRAFT",
+                "APPROVED",
+                "RETIRED"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 100000,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 30,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Order"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_RuleListItem_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Rules",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "post": {
+        "operationId": "create_rule_api_v1_organizations__org_id__accounting_rules_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Rule",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/accounting/rules/{rule_id}": {
+      "delete": {
+        "operationId": "delete_rule_api_v1_organizations__org_id__accounting_rules__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Rule",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "get": {
+        "operationId": "get_rule_api_v1_organizations__org_id__accounting_rules__rule_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Rule",
+        "tags": [
+          "accounting"
+        ]
+      },
+      "patch": {
+        "operationId": "update_rule_api_v1_organizations__org_id__accounting_rules__rule_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Rule",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/accounting/rules/{rule_id}/approve": {
+      "post": {
+        "operationId": "approve_rule_api_v1_organizations__org_id__accounting_rules__rule_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleApprove"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Rule",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/accounting/rules/{rule_id}/new-version": {
+      "post": {
+        "operationId": "new_rule_version_api_v1_organizations__org_id__accounting_rules__rule_id__new_version_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "New Rule Version",
+        "tags": [
+          "accounting"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/accounting/rules/{rule_id}/retire": {
+      "post": {
+        "operationId": "retire_rule_api_v1_organizations__org_id__accounting_rules__rule_id__retire_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retire Rule",
         "tags": [
           "accounting"
         ]
@@ -10523,7 +11896,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FromDocumentIn"
+                "$ref": "#/components/schemas/app__modules__inventory__schemas__FromDocumentIn"
               }
             }
           },
