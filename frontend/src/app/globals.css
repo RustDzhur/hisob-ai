@@ -169,3 +169,25 @@ details summary { cursor: pointer; color: var(--blue-600); font-size: 12px; marg
 
 .badge-muted { background: #eef1f6; color: #4b576d; }
 .nav-section { margin: 16px 12px 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--navy-muted); }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.th-sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; font-weight: 500; }
+.th-sort:hover { color: var(--text); }
+.empty { padding: 24px 8px; text-align: center; }
+.toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.toolbar input[type="search"], .toolbar select { min-height: 40px; padding: 0 12px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.toolbar input[type="search"] { flex: 1; min-width: 200px; }
+.check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.check input { width: 18px; height: 18px; }
+textarea { width: 100%; padding: 8px 12px; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; }
+.drawer { margin: 0 0 0 auto; height: 100vh; max-height: 100vh; width: min(480px, 100vw); border: 0; border-left: 1px solid var(--border); padding: 20px; color: var(--text); overflow-y: auto; }
+.drawer::backdrop { background: rgba(16, 26, 43, 0.4); }
+.drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.drawer-head h2 { margin: 0; }
+.drawer-actions { display: flex; gap: 12px; margin-top: 16px; }
+.sub { color: var(--text-muted); font-size: 12px; }
+.badge-info { background: #eaf1fe; color: #1d4ed8; }
+
+.mobile-sort { display: none; gap: 8px; margin-bottom: 12px; }
+.mobile-sort select { min-height: 40px; padding: 0 8px; font: inherit; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); flex: 1; }
+@media (max-width: 767px) { .mobile-sort { display: flex; } }

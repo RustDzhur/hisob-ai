@@ -1,8 +1,12 @@
 import re
 import uuid
+from datetime import datetime
 from typing import Annotated
 
+from email_validator import EmailNotValidError, validate_email
 from pydantic import AfterValidator, BaseModel, StringConstraints, model_validator
+
+from app.platform.validators import validate_tin
 
 _CODE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,15}$")
 
@@ -55,3 +59,90 @@ class UnitOut(BaseModel):
     name_en: str | None
     is_system: bool
     is_active: bool
+
+
+# ---------- контрагенты ----------
+
+_PHONE_RE = re.compile(r"^[0-9+()\-. ]{5,32}$")
+
+
+def _phone(v: str | None) -> str | None:
+    if v is None or v == "":
+        return None
+    if not _PHONE_RE.match(v):
+        raise ValueError("phone_invalid")
+    return v
+
+
+def _email(v: str | None) -> str | None:
+    if v is None or v == "":
+        return None
+    try:
+        validate_email(v, check_deliverability=False)
+    except EmailNotValidError as exc:
+        raise ValueError("email_invalid") from exc
+    return v.lower()
+
+
+Text200 = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+OptText = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=500),
+    AfterValidator(_blank_to_none),
+]
+OptPhone = Annotated[
+    str | None, StringConstraints(strip_whitespace=True, max_length=32), AfterValidator(_phone)
+]
+OptEmail = Annotated[
+    str | None,
+    StringConstraints(strip_whitespace=True, max_length=200),
+    AfterValidator(_email),
+]
+OptTin = Annotated[str | None, AfterValidator(validate_tin)]
+
+
+class CounterpartyCreate(BaseModel):
+    name: Text200
+    tin: OptTin = None
+    is_customer: bool = False
+    is_supplier: bool = False
+    address: OptText = None
+    phone: OptPhone = None
+    email: OptEmail = None
+    notes: Annotated[
+        str | None,
+        StringConstraints(strip_whitespace=True, max_length=2000),
+        AfterValidator(_blank_to_none),
+    ] = None
+
+
+class CounterpartyUpdate(BaseModel):
+    """Частичное обновление: меняются только переданные поля."""
+
+    name: Text200 | None = None
+    tin: OptTin = None
+    is_customer: bool | None = None
+    is_supplier: bool | None = None
+    address: OptText = None
+    phone: OptPhone = None
+    email: OptEmail = None
+    notes: Annotated[
+        str | None,
+        StringConstraints(strip_whitespace=True, max_length=2000),
+        AfterValidator(_blank_to_none),
+    ] = None
+
+
+class CounterpartyOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    tin: str | None
+    is_customer: bool
+    is_supplier: bool
+    address: str | None
+    phone: str | None
+    email: str | None
+    notes: str | None
+    archived: bool
+    created_at: datetime
+    updated_at: datetime

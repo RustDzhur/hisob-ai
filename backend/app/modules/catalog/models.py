@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index,
     Text,
     Uuid,
+    false,
     func,
     text,
     true,
@@ -49,6 +50,41 @@ class UnitOfMeasure(Base):
     name_en: Mapped[str | None] = mapped_column(Text, nullable=True)
     official_code: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, server_default=func.now()
+    )
+
+
+class Counterparty(Base):
+    """Контрагент организации. Архивируется, не удаляется (на него могут ссылаться документы)."""
+
+    __tablename__ = "counterparty"
+    __table_args__ = (
+        Index(
+            "uq_counterparty_org_tin",
+            "organization_id",
+            "tin",
+            unique=True,
+            postgresql_where=text("tin IS NOT NULL"),
+        ),
+        Index("ix_counterparty_org_name", "organization_id", "name"),
+        CheckConstraint("length(btrim(name)) > 0", name="name_not_blank"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=new_id)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organization.id"))
+    name: Mapped[str] = mapped_column(Text)
+    tin: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_customer: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    is_supplier: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, server_default=func.now()
     )

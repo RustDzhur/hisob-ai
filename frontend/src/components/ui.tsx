@@ -128,3 +128,64 @@ export function ConfirmDialog({
     </dialog>
   );
 }
+
+export function TextArea({
+  label,
+  error,
+  id,
+  ...rest
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; error?: string; id: string }) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <textarea id={id} rows={3} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-err` : undefined} {...rest} />
+      {error ? (
+        <p id={`${id}-err`} className="field-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function Checkbox({ label, id, ...rest }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; id: string }) {
+  return (
+    <div className="check">
+      <input id={id} type="checkbox" {...rest} />
+      <label htmlFor={id}>{label}</label>
+    </div>
+  );
+}
+
+/** Боковая панель (drawer) на <dialog>: фокус и Esc обрабатывает браузер. */
+export function Drawer({
+  open,
+  title,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const t = useT();
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className="drawer" onCancel={onClose} aria-labelledby="drawer-title">
+      <div className="drawer-head">
+        <h2 id="drawer-title">{title}</h2>
+        <Button variant="secondary" className="btn-sm" onClick={onClose} aria-label={t.list.close}>
+          ✕
+        </Button>
+      </div>
+      {open ? children : null}
+    </dialog>
+  );
+}

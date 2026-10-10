@@ -6,22 +6,12 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
+from app.platform.validators import validate_tin
+
 DEFAULT_TIMEZONE = "Asia/Tashkent"
 DEFAULT_CURRENCY = "UZS"  # Q5: базовая валюта подтверждается владельцем
 
-_TIN_RE = re.compile(r"^\d{9,14}$")
 _CCY_RE = re.compile(r"^[A-Z]{3}$")
-
-
-def _tin(v: str | None) -> str | None:
-    if v is None or v.strip() == "":
-        return None
-    v = v.strip()
-    # Предварительная проверка формата (только цифры). Точные правила ИНН/СТИР
-    # подтверждает бухгалтер (Q9) — до этого длина не фиксируется жёстко.
-    if not _TIN_RE.match(v):
-        raise ValueError("tin_invalid")
-    return v
 
 
 def _tz(v: str) -> str:
@@ -39,7 +29,7 @@ def _ccy(v: str) -> str:
 
 class OrganizationCreate(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=200)]
-    tin: Annotated[str | None, AfterValidator(_tin)] = None
+    tin: Annotated[str | None, AfterValidator(validate_tin)] = None
     timezone: Annotated[str, AfterValidator(_tz)] = DEFAULT_TIMEZONE
     base_currency: Annotated[str, AfterValidator(_ccy)] = DEFAULT_CURRENCY
 

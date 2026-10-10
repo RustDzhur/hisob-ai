@@ -35,6 +35,7 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
   const accountHref = `${home}/account`;
   const currenciesHref = `${home}/currencies`;
   const unitsHref = `${home}/units`;
+  const counterpartiesHref = `${home}/counterparties`;
 
   return (
     <div className="shell">
@@ -51,6 +52,7 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
           {current?.permissions.includes("catalog.read") ? (
             <>
               <div className="nav-section">{t.catalog.navSection}</div>
+              <Link href={counterpartiesHref} aria-current={pathname === counterpartiesHref ? "page" : undefined}>{t.counterparties.navLabel}</Link>
               <Link href={currenciesHref} aria-current={pathname === currenciesHref ? "page" : undefined}>{t.catalog.currencies}</Link>
               <Link href={unitsHref} aria-current={pathname === unitsHref ? "page" : undefined}>{t.catalog.units}</Link>
             </>

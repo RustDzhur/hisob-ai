@@ -132,3 +132,19 @@ export type Unit = {
   is_system: boolean;
   is_active: boolean;
 };
+
+export type Page<T> = { items: T[]; total: number; page: number; page_size: number };
+export type Counterparty = {
+  id: string;
+  name: string;
+  tin: string | null;
+  is_customer: boolean;
+  is_supplier: boolean;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+};
