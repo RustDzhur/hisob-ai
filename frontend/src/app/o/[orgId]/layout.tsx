@@ -37,6 +37,9 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
   const unitsHref = `${home}/units`;
   const counterpartiesHref = `${home}/counterparties`;
   const productsHref = `${home}/products`;
+  const warehousesHref = `${home}/warehouses`;
+  const canCatalog = !!current?.permissions.includes("catalog.read");
+  const canWarehouses = !!current?.permissions.includes("warehouses.read");
 
   return (
     <div className="shell">
@@ -50,11 +53,18 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
           {current?.permissions.includes("members.read") ? (
             <Link href={membersHref} aria-current={pathname === membersHref ? "page" : undefined}>{t.members.navLabel}</Link>
           ) : null}
-          {current?.permissions.includes("catalog.read") ? (
+          {canCatalog || canWarehouses ? <div className="nav-section">{t.catalog.navSection}</div> : null}
+          {canCatalog ? (
             <>
-              <div className="nav-section">{t.catalog.navSection}</div>
               <Link href={counterpartiesHref} aria-current={pathname === counterpartiesHref ? "page" : undefined}>{t.counterparties.navLabel}</Link>
               <Link href={productsHref} aria-current={pathname === productsHref ? "page" : undefined}>{t.products.navLabel}</Link>
+            </>
+          ) : null}
+          {canWarehouses ? (
+            <Link href={warehousesHref} aria-current={pathname === warehousesHref ? "page" : undefined}>{t.warehouses.navLabel}</Link>
+          ) : null}
+          {canCatalog ? (
+            <>
               <Link href={currenciesHref} aria-current={pathname === currenciesHref ? "page" : undefined}>{t.catalog.currencies}</Link>
               <Link href={unitsHref} aria-current={pathname === unitsHref ? "page" : undefined}>{t.catalog.units}</Link>
             </>

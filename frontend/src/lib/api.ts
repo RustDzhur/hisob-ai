@@ -164,3 +164,13 @@ export type Product = {
   created_at: string;
   updated_at: string;
 };
+
+export type Warehouse = {
+  id: string;
+  name: string;
+  address: string | null;
+  notes: string | null;
+  archived: boolean;
+  created_at: string;
+  updated_at: string;
+};

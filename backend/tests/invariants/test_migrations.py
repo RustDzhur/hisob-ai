@@ -5,6 +5,7 @@ from sqlalchemy import Engine
 from app.modules.audit import models as _a  # noqa: F401
 from app.modules.catalog import models as _c  # noqa: F401
 from app.modules.identity import models as _i  # noqa: F401
+from app.modules.inventory import models as _inv  # noqa: F401
 from app.modules.rbac import models as _r  # noqa: F401
 from app.modules.tenancy import models as _t  # noqa: F401
 from app.platform import idempotency as _idem  # noqa: F401
