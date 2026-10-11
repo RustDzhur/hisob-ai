@@ -71,6 +71,7 @@ def test_invite_preview_accept_flow(new_client: NewClient, admin_engine: Engine)
         "documents.read",
         "documents.review",
         "documents.upload",
+        "integrations.read",
         "members.read",
         "org.read",
         "stock.manage",

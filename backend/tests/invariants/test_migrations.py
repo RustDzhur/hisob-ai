@@ -50,6 +50,7 @@ def test_seeded_roles_and_permissions(admin_engine: Engine) -> None:
             "audit.read",
             "catalog.read",
             "documents.read",
+            "integrations.read",
             "stock.read",
             "warehouses.read",
         }

@@ -391,3 +391,13 @@ export type BankMatchReportRow = {
   document_number: string | null; document_type: string; counterparty_name: string | null; confirmed_by_name: string | null; confirmed_at: string;
 };
 export type BankMatchReport = { date_from: string; date_to: string; rows: BankMatchReportRow[]; total: number; truncated: boolean };
+
+// ---------------- интеграции (этап 7) ----------------
+export type IntegrationProvider = {
+  code: string; title: string; kind: "generic_file" | "external" | "mock"; status: "AVAILABLE" | "MOCK" | "NOT_CONFIGURED"; docs_received: boolean;
+  capabilities: string[]; enabled: boolean; can_sync: boolean; last_sync_at: string | null; sync_cursor: string | null;
+};
+export type IntegrationRun = {
+  id: string; provider: string; mode: string; request_id: string; status: "SUCCEEDED" | "FAILED"; cursor_before: string | null; cursor_after: string | null;
+  records_count: number; error_code: string | null; created_by_name: string | null; created_at: string;
+};
