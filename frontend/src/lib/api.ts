@@ -379,3 +379,15 @@ export type BankMatch = {
 };
 export type BankTransactionDetail = BankTransaction & { matched_amount: string; remaining: string; matches: BankMatch[]; candidates: DocCandidate[] };
 export type DocumentBank = { document_id: string; currency: string | null; total: string | null; matched_total: string; remaining: string | null; matches: BankMatch[]; candidates: TxnCandidate[] };
+
+// ---------------- отчёты банка (срез 6.3) ----------------
+export type BankSummaryRow = {
+  bank_account: { id: string; name: string }; currency: string; opening: string; incoming: string; outgoing: string; net: string; closing: string;
+  txn_count: number; unmatched_count: number; matched_count: number; ignored_count: number; unmatched_amount: string;
+};
+export type BankSummary = { date_from: string; date_to: string; rows: BankSummaryRow[]; note: string };
+export type BankMatchReportRow = {
+  match_id: string; transaction_id: string; document_id: string; txn_date: string; bank_account_name: string; currency: string; amount: string;
+  document_number: string | null; document_type: string; counterparty_name: string | null; confirmed_by_name: string | null; confirmed_at: string;
+};
+export type BankMatchReport = { date_from: string; date_to: string; rows: BankMatchReportRow[]; total: number; truncated: boolean };

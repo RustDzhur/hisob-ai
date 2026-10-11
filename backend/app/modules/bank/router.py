@@ -3,9 +3,10 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
-from app.modules.bank import reconcile
+from app.modules.bank import reconcile, reports
 from app.modules.bank import service as svc
 from app.modules.bank.parsing import ImportProfile
 from app.modules.bank.schemas import (
@@ -17,9 +18,11 @@ from app.modules.bank.schemas import (
     IgnoreIn,
     ImportOut,
     MatchCreate,
+    MatchReportOut,
     MergeCreate,
     PreviewOut,
     RejectCandidateIn,
+    SummaryOut,
     TransactionDetailOut,
     TransactionOut,
 )
@@ -284,3 +287,102 @@ def document_bank(
     org_id: uuid.UUID, document_id: uuid.UUID, principal: CurrentPrincipal, db: DbSession
 ) -> DocumentBankOut:
     return reconcile.document_bank(db, principal, org_id, document_id)
+
+
+# ---------------- отчёты (срез 6.3) ----------------
+
+DateFrom = Annotated[date, Query()]
+DateTo = Annotated[date, Query()]
+AccountQ = Annotated[uuid.UUID | None, Query()]
+
+
+def _csv(text: str, name: str) -> PlainTextResponse:
+    return PlainTextResponse(
+        "\ufeff" + text,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{name}.csv"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/reports/summary", response_model=SummaryOut)
+def report_summary(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: DateFrom,
+    date_to: DateTo,
+    account_id: AccountQ = None,
+) -> SummaryOut:
+    return reports.summary(
+        db, principal, org_id, date_from=date_from, date_to=date_to, account_id=account_id
+    )
+
+
+@router.get("/reports/summary.csv", response_class=PlainTextResponse)
+def report_summary_csv(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: DateFrom,
+    date_to: DateTo,
+    account_id: AccountQ = None,
+) -> PlainTextResponse:
+    text = reports.summary_csv(
+        db, principal, org_id, date_from=date_from, date_to=date_to, account_id=account_id
+    )
+    return _csv(text, f"bank-summary-{date_from}-{date_to}")
+
+
+@router.get("/reports/matches", response_model=MatchReportOut)
+def report_matches(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: DateFrom,
+    date_to: DateTo,
+    account_id: AccountQ = None,
+) -> MatchReportOut:
+    return reports.matches_report(
+        db, principal, org_id, date_from=date_from, date_to=date_to, account_id=account_id
+    )
+
+
+@router.get("/reports/matches.csv", response_class=PlainTextResponse)
+def report_matches_csv(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: DateFrom,
+    date_to: DateTo,
+    account_id: AccountQ = None,
+) -> PlainTextResponse:
+    text = reports.matches_csv(
+        db, principal, org_id, date_from=date_from, date_to=date_to, account_id=account_id
+    )
+    return _csv(text, f"bank-matches-{date_from}-{date_to}")
+
+
+@router.get("/reports/transactions.csv", response_class=PlainTextResponse)
+def report_transactions_csv(
+    org_id: uuid.UUID,
+    principal: CurrentPrincipal,
+    db: DbSession,
+    date_from: DateFrom,
+    date_to: DateTo,
+    account_id: AccountQ = None,
+    status: Annotated[Literal["all", "UNMATCHED", "MATCHED", "IGNORED"], Query()] = "all",
+) -> PlainTextResponse:
+    text = reports.transactions_csv(
+        db,
+        principal,
+        org_id,
+        date_from=date_from,
+        date_to=date_to,
+        account_id=account_id,
+        status=status,
+    )
+    return _csv(text, f"bank-transactions-{date_from}-{date_to}")

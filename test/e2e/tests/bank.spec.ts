@@ -179,3 +179,80 @@ test("сверка: страница операции, пропуск и воз�
   await au.ctx.close();
   await o.ctx.close();
 });
+
+const pdfBytes = (tag: string) => Buffer.from(`%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n%${tag}\n`);
+
+async function apiJson(o: Org, method: "post" | "patch", path: string, data: unknown, status = 201) {
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const r = await o.page.request[method](`/api/v1/organizations/${o.orgId}${path}`, { data, headers: { "X-CSRF-Token": csrf } });
+  expect(r.status()).toBe(status);
+  return r.json();
+}
+
+test("сверка и отчёты: подтверждение предложения, панель документа, отчёт и отмена", async ({ browser }) => {
+  const o = await ownerWithOrg(browser);
+
+  // утверждённый документ на 1000
+  const csrf = (await o.ctx.cookies()).find((c) => c.name === "hisob_csrf")!.value;
+  const up = await o.page.request.post(`/api/v1/organizations/${o.orgId}/documents`, {
+    multipart: { file: { name: "inv.pdf", mimeType: "application/pdf", buffer: pdfBytes(uniq()) }, doc_type: "invoice" },
+    headers: { "X-CSRF-Token": csrf },
+  });
+  const doc = await up.json();
+  const cp = await apiJson(o, "post", "/counterparties", { name: "ООО Клиент", tin: "123456789" });
+  const patched = await apiJson(o, "patch", `/documents/${doc.id}`, {
+    expected_version: doc.version, doc_type: "invoice", number: "СФ-77", doc_date: "2026-10-01", counterparty_id: cp.id, currency: "UZS",
+    total_amount: "1000", lines: [{ description: "Услуга", quantity: "1", unit_price: "1000", amount: "1000" }],
+  }, 200);
+  await apiJson(o, "post", `/documents/${doc.id}/approve`, { expected_version: patched.version, acknowledged: [] }, 200);
+
+  // счёт, профиль, выписка
+  await createAccount(o.page, o.orgUrl);
+  await o.page.getByLabel("Образец выписки (CSV или XLSX)").setInputFiles({ name: "s.csv", mimeType: "text/csv", buffer: csv(["01.10.2026;100,00;Оплата;P-1;ООО Альфа;123456789"]) });
+  await o.page.getByRole("button", { name: "Прочитать колонки" }).click();
+  await o.page.getByLabel("Колонка даты").selectOption("Дата");
+  await o.page.getByLabel("Колонка суммы").selectOption("Сумма");
+  await o.page.getByLabel("Колонка назначения").selectOption("Назначение");
+  await o.page.getByRole("button", { name: "Сохранить профиль" }).click();
+  await expect(o.page.getByText("Профиль сохранён.")).toBeVisible();
+  await o.page.getByLabel("Файл выписки").setInputFiles({ name: "stmt.csv", mimeType: "text/csv", buffer: csv(["05.10.2026;1 000,00;Оплата по счёту СФ-77;;;"]) });
+  await o.page.getByRole("button", { name: "Проверить" }).click();
+  await o.page.getByRole("button", { name: "Загрузить", exact: true }).click();
+  await expect(o.page.getByTestId("import-result")).toContainText("Загружено: 1");
+
+  // операция -> предложение с причиной -> подтверждение
+  await o.page.goto(`${o.orgUrl}/bank`);
+  await o.page.getByRole("link", { name: "Сверка" }).first().click();
+  const cand = o.page.getByTestId("txn-candidates");
+  await expect(cand.getByText(/СФ-77/).first()).toBeVisible();
+  await expect(cand.getByText(/номер документа СФ-77 найден в назначении платежа/)).toBeVisible();
+  const txnUrl = o.page.url();
+  await cand.getByRole("button", { name: "Подтвердить" }).click();
+  await expect(o.page.getByTestId("txn-matches")).toContainText("СФ-77");
+  await expect(o.page.getByTestId("txn-remaining")).toContainText("0");
+  await expect(o.page.getByText("Сверена").first()).toBeVisible();
+
+  // карточка документа: оплачено полностью
+  await o.page.goto(`${o.orgUrl}/documents/${doc.id}`);
+  const panel = o.page.getByTestId("doc-bank");
+  await expect(panel.getByTestId("doc-paid")).toContainText("1");
+  await expect(panel.getByTestId("doc-unpaid")).toContainText("0");
+
+  // отчёты: сводка и сопоставления, переход к списку
+  await o.page.goto(`${o.orgUrl}/bank/reports`);
+  await o.page.getByLabel("С", { exact: true }).fill("2026-10-01");
+  await o.page.getByLabel("По", { exact: true }).fill("2026-10-31");
+  await o.page.getByRole("button", { name: "Показать" }).click();
+  await expect(o.page.getByTestId("bank-summary")).toContainText("Расчётный счёт");
+  await expect(o.page.getByTestId("bank-matches-report")).toContainText("СФ-77");
+  await o.page.getByTestId("bank-summary").getByRole("link", { name: "1" }).first().click();
+  await expect(o.page).toHaveURL(/\/bank\?/);
+  await expect(o.page.getByText("Оплата по счёту СФ-77")).toBeVisible();
+
+  // отмена возвращает операцию в несверенные
+  await o.page.goto(txnUrl);
+  await o.page.getByRole("button", { name: "Отменить" }).click();
+  await expect(o.page.getByText("Сопоставлений пока нет.")).toBeVisible();
+  await expect(o.page.getByTestId("txn-remaining")).toContainText("1");
+  await o.ctx.close();
+});

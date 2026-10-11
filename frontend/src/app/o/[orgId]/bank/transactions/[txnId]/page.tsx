@@ -77,8 +77,8 @@ export default function BankTransactionPage() {
   if (!canRead) return <div className="card"><h1>{t.catalog.noAccessTitle}</h1><p className="muted">{t.bank.noAccessBody}</p></div>;
   if (!txn) return error ? <Banner>{errorText(t, error)}</Banner> : <Skeleton />;
 
-  const active = txn.matches.filter((m) => m.status === "ACTIVE");
-  const history = txn.matches.filter((m) => m.status !== "ACTIVE");
+  const active = txn.matches.filter((m) => m.status === "CONFIRMED");
+  const history = txn.matches.filter((m) => m.status !== "CONFIRMED");
   const cur = txn.currency;
   const docLabel = (d: DocBrief | DocCandidate["document"]) => `${d.number ?? "—"}${d.counterparty_name ? ` · ${d.counterparty_name}` : ""}`;
 

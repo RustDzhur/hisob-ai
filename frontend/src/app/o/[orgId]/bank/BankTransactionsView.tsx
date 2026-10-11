@@ -21,7 +21,7 @@ export function BankTransactionsView() {
   const org = session.status === "ready" ? session.orgs.find((o) => o.id === orgId) : undefined;
   const canRead = !!org?.permissions.includes("bank.read");
 
-  const { state, update } = useListParams({ sort: "txn_date", order: "desc", filters: { account_id: "", status: "all", direction: "all", import_id: "" } });
+  const { state, update } = useListParams({ sort: "txn_date", order: "desc", filters: { account_id: "", status: "all", direction: "all", import_id: "", date_from: "", date_to: "" } });
   const [searchText, setSearchText] = useState(state.q);
   const [data, setData] = useState<Page<BankTransaction> | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -40,6 +40,8 @@ export function BankTransactionsView() {
     const qs = new URLSearchParams({ page: String(state.page), page_size: "25", sort: state.sort, order: state.order, status: state.filters.status, direction: state.filters.direction });
     if (state.filters.account_id) qs.set("account_id", state.filters.account_id);
     if (state.filters.import_id) qs.set("import_id", state.filters.import_id);
+    if (state.filters.date_from) qs.set("date_from", state.filters.date_from);
+    if (state.filters.date_to) qs.set("date_to", state.filters.date_to);
     if (state.q) qs.set("q", state.q);
     try {
       setData(await api<Page<BankTransaction>>(`/organizations/${orgId}/bank/transactions?${qs}`));
@@ -77,7 +79,7 @@ export function BankTransactionsView() {
     { key: "act", header: "", render: (r) => <Link href={`/o/${orgId}/bank/transactions/${r.id}`}>{t.bank.reconcile}</Link> },
   ];
   const f = state.filters;
-  const filtered = !!(state.q || f.account_id || f.status !== "all" || f.direction !== "all" || f.import_id);
+  const filtered = !!(state.q || f.account_id || f.status !== "all" || f.direction !== "all" || f.import_id || f.date_from || f.date_to);
 
   return (
     <div className="stack">
@@ -99,7 +101,9 @@ export function BankTransactionsView() {
         <select aria-label={t.bank.colAmount} value={f.direction} onChange={(e) => update({ filters: { direction: e.target.value } })}>
           {Object.entries(t.bank.directions).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        {filtered ? <Button variant="secondary" onClick={() => { setSearchText(""); update({ q: "", filters: { account_id: "", status: "all", direction: "all", import_id: "" } }); }}>{t.list.reset}</Button> : null}
+        <input type="date" aria-label={t.bank.periodFrom} value={f.date_from} onChange={(e) => update({ filters: { date_from: e.target.value } })} />
+        <input type="date" aria-label={t.bank.periodTo} value={f.date_to} onChange={(e) => update({ filters: { date_to: e.target.value } })} />
+        {filtered ? <Button variant="secondary" onClick={() => { setSearchText(""); update({ q: "", filters: { account_id: "", status: "all", direction: "all", import_id: "", date_from: "", date_to: "" } }); }}>{t.list.reset}</Button> : null}
       </div>
       <DataTable
         caption={t.bank.txnTitle} columns={columns} rows={data?.items ?? null} total={data?.total ?? 0}

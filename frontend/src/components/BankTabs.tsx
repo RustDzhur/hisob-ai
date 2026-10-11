@@ -12,6 +12,7 @@ export function BankTabs() {
   const tabs = [
     { href: base, label: t.bank.txnTab, active: pathname === base },
     { href: `${base}/accounts`, label: t.bank.accountsTab, active: pathname.startsWith(`${base}/accounts`) },
+    { href: `${base}/reports`, label: t.bank.reportsTab, active: pathname.startsWith(`${base}/reports`) },
   ];
   return (
     <nav className="tabs" aria-label={t.bank.navLabel}>

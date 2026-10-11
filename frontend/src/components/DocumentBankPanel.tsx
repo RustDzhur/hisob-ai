@@ -46,7 +46,7 @@ export function DocumentBankPanel({ orgId, docId, approved, canRead, canReconcil
 
   if (!canRead || !approved || !data) return null;
   const cur = data.currency ?? "";
-  const active = data.matches.filter((m) => m.status === "ACTIVE");
+  const active = data.matches.filter((m) => m.status === "CONFIRMED");
   return (
     <section className="card" aria-labelledby="db-h" data-testid="doc-bank">
       <h2 id="db-h">{t.bank.paymentsTitle}</h2>

@@ -249,3 +249,51 @@ class DocumentBankOut(BaseModel):
     remaining: str | None
     matches: list[MatchOut]
     candidates: list[TxnCandidate]
+
+
+# ---------------- отчёты (срез 6.3) ----------------
+
+
+class SummaryRow(BaseModel):
+    bank_account: NameRef
+    currency: str
+    opening: str  # сумма импортированных операций до начала периода (не остаток банка!)
+    incoming: str
+    outgoing: str  # по модулю
+    net: str
+    closing: str
+    txn_count: int
+    unmatched_count: int
+    matched_count: int
+    ignored_count: int
+    unmatched_amount: str  # по модулю: не сопоставлено по операциям, не пропущенным
+
+
+class SummaryOut(BaseModel):
+    date_from: date
+    date_to: date
+    rows: list[SummaryRow]
+    note: str
+
+
+class MatchReportRow(BaseModel):
+    match_id: uuid.UUID
+    transaction_id: uuid.UUID
+    document_id: uuid.UUID
+    txn_date: date
+    bank_account_name: str
+    currency: str
+    amount: str
+    document_number: str | None
+    document_type: str
+    counterparty_name: str | None
+    confirmed_by_name: str | None
+    confirmed_at: datetime
+
+
+class MatchReportOut(BaseModel):
+    date_from: date
+    date_to: date
+    rows: list[MatchReportRow]
+    total: int
+    truncated: bool
