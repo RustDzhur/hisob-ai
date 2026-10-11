@@ -39,6 +39,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mfaNeeded, setMfaNeeded] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const isLogin = mode === "login";
 
   async function onSubmit(e: React.FormEvent) {
@@ -51,11 +53,15 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     try {
       await api<User>(isLogin ? "/auth/login" : "/auth/register", {
         method: "POST",
-        body: isLogin ? { email, password } : { email, password, full_name: fullName },
+        body: isLogin ? { email, password, ...(mfaNeeded ? { mfa_code: mfaCode } : {}) } : { email, password, full_name: fullName },
       });
       await reload();
       router.replace(next ?? "/");
     } catch (err) {
+      if (isLogin && err instanceof ApiError && err.code === "mfa_required") {
+        setMfaNeeded(true);
+        return;
+      }
       const fe = fieldErrorMap(t, err);
       setErrors(fe);
       if (Object.keys(fe).length === 0) setFormError(toApiError(err));
@@ -78,6 +84,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           autoComplete={isLogin ? "current-password" : "new-password"} value={password}
           onChange={(e) => setPassword(e.target.value)} error={errors.password}
           hint={isLogin ? undefined : t.auth.passwordHint} />
+        {isLogin && mfaNeeded ? (
+          <>
+            <p className="hint" role="status">{t.auth.mfaPrompt}</p>
+            <Field id="mfa_code" label={t.auth.mfaCode} autoComplete="one-time-code" inputMode="numeric" value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)} />
+          </>
+        ) : null}
         <Button type="submit" loading={busy} style={{ width: "100%" }}>
           {isLogin ? t.auth.loginSubmit : t.auth.registerSubmit}
         </Button>

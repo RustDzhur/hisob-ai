@@ -25,6 +25,9 @@ if _ADMIN_URL:
     )
     os.environ["COOKIE_SECURE"] = "false"
 
+# Ограничение частоты выключено для набора тестов (все «пользователи» с одного адреса); его проверяет test_hardening.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+
 TABLES = "audit_event, idempotency_key, invitation, membership, organization, sessions, login_attempt, users, ai_runtime"
 
 

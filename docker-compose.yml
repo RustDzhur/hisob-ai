@@ -8,6 +8,15 @@ x-backend-env: &backend-env
   DATABASE_URL: postgresql+psycopg://hisob_app:${APP_DB_PASSWORD}@postgres:5432/hisob
   MIGRATION_DATABASE_URL: postgresql+psycopg://hisob_migrator:${MIGRATOR_DB_PASSWORD}@postgres:5432/hisob
   COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  UVICORN_WORKERS: ${UVICORN_WORKERS:-1}
+  # Ключ шифрования секретов второго фактора (TOTP). Пусто — второй фактор недоступен. Сгенерировать: openssl rand -base64 32
+  APP_SECRET_KEY: ${APP_SECRET_KEY:-}
+  MFA_REQUIRED_FOR_ADMINS: ${MFA_REQUIRED_FOR_ADMINS:-false}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  # Стенд разработки: все запросы E2E приходят с одного адреса, поэтому ограничение частоты по умолчанию выключено.
+  # В рабочей среде: RATE_LIMIT_ENABLED=true и TRUST_PROXY_HEADERS=true (если перед сервисом обратный прокси).
+  RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
+  TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-false}
   S3_ENDPOINT_URL: http://storage:8333
   S3_BUCKET: hisob-documents
   S3_ACCESS_KEY: ${S3_ACCESS_KEY:?задайте S3_ACCESS_KEY в .env}
@@ -87,7 +96,7 @@ services:
     environment:
       <<: *backend-env
       REDIS_URL: redis://redis:6379/0
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-1}"]
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-8300}:8000"
     depends_on:

@@ -20,6 +20,7 @@ dependencies = [
     "dramatiq[redis]>=2.2.1",
     "openpyxl>=3.1.5",
     "httpx>=0.28.1",
+    "cryptography>=44",
 ]
 
 [dependency-groups]

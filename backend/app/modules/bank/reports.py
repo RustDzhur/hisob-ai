@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from app.modules.audit import service as audit
 from app.modules.bank.models import BankAccount, BankMatch, BankTransaction
 from app.modules.bank.schemas import (
     MatchReportOut,
@@ -217,6 +218,36 @@ def _safe(v: str | None) -> str:
     return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
 
 
+def _audit_export(
+    db: Session,
+    principal: Principal,
+    org_id: uuid.UUID,
+    report: str,
+    *,
+    date_from: date,
+    date_to: date,
+    account_id: uuid.UUID | None,
+    rows: int,
+) -> None:
+    """Выгрузка данных — событие аудита (кто, что, за какой период, сколько строк); содержимое не пишется."""
+    audit.record(
+        db,
+        action="export.created",
+        actor_user_id=principal.user.id,
+        organization_id=org_id,
+        object_type="report",
+        after={
+            "report": report,
+            "format": "csv",
+            "date_from": date_from.isoformat(),
+            "date_to": date_to.isoformat(),
+            "account_id": str(account_id) if account_id else None,
+            "rows": rows,
+        },
+    )
+    db.commit()
+
+
 def summary_csv(
     db: Session,
     principal: Principal,
@@ -264,6 +295,16 @@ def summary_csv(
             ]
         )
     w.writerow([_safe(r.note)])
+    _audit_export(
+        db,
+        principal,
+        org_id,
+        "bank_summary",
+        date_from=date_from,
+        date_to=date_to,
+        account_id=account_id,
+        rows=len(r.rows),
+    )
     return buf.getvalue()
 
 
@@ -315,6 +356,16 @@ def matches_csv(
                 x.confirmed_at.isoformat(),
             ]
         )
+    _audit_export(
+        db,
+        principal,
+        org_id,
+        "bank_matches",
+        date_from=date_from,
+        date_to=date_to,
+        account_id=account_id,
+        rows=len(r.rows),
+    )
     return buf.getvalue()
 
 
@@ -367,7 +418,9 @@ def transactions_csv(
             "Не сопоставлено",
         ]
     )
+    count = 0
     for t, matched in db.execute(stmt):
+        count += 1
         minor = _minor(db, t.currency)
         w.writerow(
             [
@@ -384,4 +437,14 @@ def transactions_csv(
                 qty(abs(t.amount) - Decimal(matched), minor),
             ]
         )
+    _audit_export(
+        db,
+        principal,
+        org_id,
+        "bank_transactions",
+        date_from=date_from,
+        date_to=date_to,
+        account_id=account_id,
+        rows=count,
+    )
     return buf.getvalue()

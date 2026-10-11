@@ -122,7 +122,9 @@ def _is_throttled(db: Session, email: str) -> bool:
     return (failures or 0) >= s.login_max_failures
 
 
-def login(db: Session, *, email: str, password: str) -> tuple[User, str]:
+def login(
+    db: Session, *, email: str, password: str, mfa_code: str | None = None
+) -> tuple[User, str]:
     settings = get_settings()
     email = normalize_email(email)
 
@@ -149,6 +151,12 @@ def login(db: Session, *, email: str, password: str) -> tuple[User, str]:
         raise AppError(401, "invalid_credentials", "Неверный email или пароль.")
 
     set_context(db, user_id=user.id)
+    from app.modules.identity import mfa  # отложенный импорт: mfa использует функции этого модуля
+
+    if mfa.is_enabled(db, user.id):
+        if not mfa_code:
+            raise AppError(401, "mfa_required", "Введите код второго фактора.")
+        mfa.verify_login(db, user, mfa_code)  # неверный код — 401 mfa_invalid_code и учёт попытки
     if password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
     user.last_login_at = utcnow()

@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     migration_database_url: str | None = None
 
     cookie_secure: bool = True
+    rate_limit_enabled: bool = True
+    # Ключ шифрования секретов в БД (второй фактор). Пусто — второй фактор отключён. Не менять без перенастройки.
+    app_secret_key: str = ""
+    mfa_issuer: str = "Hisob AI"
+    # Политика: владельцы и администраторы организации обязаны включить второй фактор (включается позже, «поэтапно»).
+    mfa_required_for_admins: bool = False
+    metrics_token: str = ""  # пусто — /metrics отключён (404)
     session_ttl_hours: int = 24 * 14
 
     login_max_failures: int = 5

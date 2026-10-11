@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.platform import context
+from app.platform import context, metrics
 from app.platform.config import get_settings
 from app.platform.errors import error_body
 
@@ -46,6 +46,20 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 status_code=500,
             )
         response.headers["X-Correlation-ID"] = cid
+        # Базовые защитные заголовки; API не кэшируется (данные организации), кроме явно заданного.
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        if request.url.path.startswith("/api/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        route = request.scope.get("route")
+        metrics.observe(
+            request.method,
+            getattr(route, "path", None)
+            or "unmatched",  # шаблон маршрута, не путь с идентификаторами
+            response.status_code,
+            time.perf_counter() - started,
+        )
         log.info(
             "request",
             extra={

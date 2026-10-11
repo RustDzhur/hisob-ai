@@ -6,6 +6,7 @@ import { Banner, Button, ConfirmDialog, ErrorState, Field, Skeleton } from "@/co
 import { errorText, fieldErrorMap } from "@/i18n/errors";
 import { useFormat, useT } from "@/i18n/LocaleProvider";
 import { api, ApiError, toApiError, type SessionInfo } from "@/lib/api";
+import { MfaSection } from "@/components/MfaSection";
 import { useSession } from "@/lib/session";
 
 
@@ -123,6 +124,8 @@ export default function AccountPage() {
           <Button type="submit" loading={busy}>{t.account.change}</Button>
         </form>
       </section>
+
+      <MfaSection />
 
       <section className="card" aria-labelledby="sess-h">
         <div className="page-head">

@@ -7,9 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.modules.audit import service as audit
+from app.modules.identity import mfa
 from app.modules.identity.service import Principal
 from app.modules.rbac import service as rbac
 from app.modules.tenancy.models import Membership, Organization
+from app.platform.config import get_settings
 from app.platform.db import set_context
 from app.platform.errors import AppError
 
@@ -41,6 +43,16 @@ def authorize(db: Session, principal: Principal, org_id: uuid.UUID, permission: 
     org, membership = row
     set_context(db, org_id=org.id)
     perms = rbac.permissions_of_role(db, membership.role_id)
+    if get_settings().mfa_required_for_admins and rbac.role_code(db, membership.role_id) in (
+        rbac.ROLE_OWNER,
+        "org_admin",
+    ):
+        if not mfa.is_enabled(db, principal.user.id):
+            raise AppError(
+                403,
+                "mfa_required_for_admins",
+                "Для владельцев и администраторов обязателен второй фактор. Включите его в разделе «Безопасность».",
+            )
     if permission not in perms:
         audit.record(
             db,

@@ -742,6 +742,23 @@ def trial_balance_csv(
                 totals.closing_credit,
             ]
         )
+    audit.record(
+        db,
+        action="export.created",
+        actor_user_id=principal.user.id,
+        organization_id=org_id,
+        object_type="report",
+        after={
+            "report": "trial_balance",
+            "format": "csv",
+            "date_from": date_from.isoformat(),
+            "date_to": date_to.isoformat(),
+            "currency": cur,
+            "base": base,
+            "rows": len(rows),
+        },
+    )
+    db.commit()
     return buf.getvalue()
 
 

@@ -4,9 +4,20 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
-from app.modules.identity import service
+from app.modules.identity import mfa, service
 from app.modules.identity.deps import SESSION_COOKIE, CurrentPrincipal
-from app.modules.identity.schemas import ChangePasswordIn, LoginIn, RegisterIn, SessionOut, UserOut
+from app.modules.identity.schemas import (
+    ChangePasswordIn,
+    LoginIn,
+    MfaCodeIn,
+    MfaCodesOut,
+    MfaPasswordCodeIn,
+    MfaSetupOut,
+    MfaStatusOut,
+    RegisterIn,
+    SessionOut,
+    UserOut,
+)
 from app.platform.config import get_settings
 from app.platform.csrf import CSRF_COOKIE, require_csrf
 from app.platform.db import get_db
@@ -52,7 +63,9 @@ def register(body: RegisterIn, response: Response, db: DbSession) -> UserOut:
 
 @router.post("/login", response_model=UserOut)
 def login(body: LoginIn, response: Response, db: DbSession) -> UserOut:
-    user, token = service.login(db, email=body.email, password=body.password)
+    user, token = service.login(
+        db, email=body.email, password=body.password, mfa_code=body.mfa_code
+    )
     _set_auth_cookies(response, token)
     return UserOut.model_validate(user)
 
@@ -113,3 +126,48 @@ def logout_all(
     service.logout_all(db, principal)
     response.delete_cookie(SESSION_COOKIE, path="/")
     response.delete_cookie(CSRF_COOKIE, path="/")
+
+
+# ---------------- второй фактор (TOTP) ----------------
+
+
+@router.get("/mfa", response_model=MfaStatusOut)
+def mfa_status(principal: CurrentPrincipal, db: DbSession) -> MfaStatusOut:
+    return MfaStatusOut(**mfa.status(db, principal))
+
+
+@router.post("/mfa/setup", response_model=MfaSetupOut)
+def mfa_setup(
+    principal: CurrentPrincipal, _csrf: Annotated[None, Depends(require_csrf)], db: DbSession
+) -> MfaSetupOut:
+    return MfaSetupOut(**mfa.setup(db, principal))
+
+
+@router.post("/mfa/enable", response_model=MfaCodesOut)
+def mfa_enable(
+    body: MfaCodeIn,
+    principal: CurrentPrincipal,
+    _csrf: Annotated[None, Depends(require_csrf)],
+    db: DbSession,
+) -> MfaCodesOut:
+    return MfaCodesOut(recovery_codes=mfa.enable(db, principal, body.code))
+
+
+@router.post("/mfa/disable", status_code=204)
+def mfa_disable(
+    body: MfaPasswordCodeIn,
+    principal: CurrentPrincipal,
+    _csrf: Annotated[None, Depends(require_csrf)],
+    db: DbSession,
+) -> None:
+    mfa.disable(db, principal, body.password, body.code)
+
+
+@router.post("/mfa/recovery-codes", response_model=MfaCodesOut)
+def mfa_regenerate(
+    body: MfaPasswordCodeIn,
+    principal: CurrentPrincipal,
+    _csrf: Annotated[None, Depends(require_csrf)],
+    db: DbSession,
+) -> MfaCodesOut:
+    return MfaCodesOut(recovery_codes=mfa.regenerate_codes(db, principal, body.password, body.code))

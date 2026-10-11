@@ -411,3 +411,7 @@ export type CopilotMessage = {
 export type CopilotConversation = { id: string; title: string; updated_at: string };
 export type CopilotConversationDetail = CopilotConversation & { messages: CopilotMessage[] };
 export type CopilotStatus = { configured: boolean; provider: string | null; model: string | null; mock: boolean };
+
+// ---------------- второй фактор (этап 9.3) ----------------
+export type MfaStatus = { available: boolean; enabled: boolean; pending: boolean; recovery_codes_left: number; required_for_admins: boolean };
+export type MfaSetup = { secret: string; otpauth_uri: string };
