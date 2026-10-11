@@ -25,6 +25,10 @@ STOCK_POST = "stock.post"
 ACCOUNTING_READ = "accounting.read"
 ACCOUNTING_POST = "accounting.post"
 ACCOUNTING_MANAGE = "accounting.manage"
+BANK_READ = "bank.read"
+BANK_MANAGE = "bank.manage"
+BANK_IMPORT = "bank.import"
+BANK_RECONCILE = "bank.reconcile"
 
 ROLE_OWNER = "owner"
 

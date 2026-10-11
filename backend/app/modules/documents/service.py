@@ -7,7 +7,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import SQLColumnExpression
@@ -915,6 +915,27 @@ def mark_duplicate(
     )
 
 
+def _guard_no_bank_matches(db: Session, org_id: uuid.UUID, doc: Document) -> None:
+    """Утверждённый документ с банковскими сопоставлениями нельзя вернуть/архивировать: сначала отмените сверку.
+
+    Таблица банка читается напрямую, чтобы не нарушать слои модулей.
+    """
+    if doc.status != "APPROVED":
+        return
+    row = db.execute(
+        text(
+            "SELECT 1 FROM bank_match WHERE organization_id = :o AND document_id = :d AND status = 'CONFIRMED' LIMIT 1"
+        ),
+        {"o": org_id, "d": doc.id},
+    ).first()
+    if row:
+        raise AppError(
+            409,
+            "document_has_bank_matches",
+            "По документу есть банковские сопоставления: сначала отмените сверку.",
+        )
+
+
 def reopen(
     db: Session, principal: Principal, org_id: uuid.UUID, doc_id: uuid.UUID, expected_version: int
 ) -> DocumentOut:
@@ -926,6 +947,7 @@ def reopen(
     access, doc = _lock_for_action(db, principal, org_id, doc_id, perm, expected_version)
     if doc.status not in ("APPROVED", "REJECTED", "DUPLICATE"):
         raise _bad_transition(doc)
+    _guard_no_bank_matches(db, org_id, doc)
     before = {"status": doc.status}
     doc.status = EDITABLE_STATUS
     doc.approved_by = doc.approved_at = doc.rejection_reason = doc.duplicate_of_id = None
@@ -941,6 +963,7 @@ def archive(
     access, doc = _lock_for_action(db, principal, org_id, doc_id, perm, expected_version)
     if doc.status not in ("NEEDS_REVIEW", "APPROVED", "REJECTED", "DUPLICATE"):
         raise _bad_transition(doc)
+    _guard_no_bank_matches(db, org_id, doc)
     before = {
         "status": doc.status,
         "reason": doc.rejection_reason,

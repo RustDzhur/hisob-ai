@@ -345,3 +345,37 @@ export type TaxCodeRow = {
   source_note: string | null; status: "DRAFT" | "CONFIRMED"; is_default: boolean; confirmed_by_name: string | null; confirmed_at: string | null;
 };
 export type BaseTrialBalance = TrialBalance & { complete: boolean; missing_rates: { currency: string; rate_date: string }[]; note: string };
+
+// ---------------- банк (срез 6.1) ----------------
+export type BankAccount = { id: string; name: string; bank_name: string | null; account_number: string; currency: string; notes: string | null; has_profile: boolean; archived: boolean; transactions_count: number; created_at: string };
+export type ImportProfile = {
+  format: "csv" | "xlsx"; delimiter: string; encoding: "utf-8" | "cp1251"; header_row: number; sheet: string | null; date_column: string; date_format: string;
+  amount_mode: "signed" | "split"; amount_column: string | null; incoming_column: string | null; outgoing_column: string | null;
+  decimal_separator: "," | "."; thousands_separator: string; currency_column: string | null; description_column: string | null; reference_column: string | null;
+  counterparty_name_column: string | null; counterparty_tin_column: string | null;
+};
+export type StatementHeaders = { headers: string[]; sample: Record<string, string>[] };
+export type StatementPreview = {
+  total: number; valid: number; errors_count: number; duplicates: number; would_import: number; errors: { row_number: number; code: string }[];
+  sample: { row_number: number; txn_date: string; amount: string; description: string | null; reference: string | null; counterparty_name: string | null; counterparty_tin: string | null; duplicate: boolean }[];
+  already_imported: boolean;
+};
+export type BankImportRow = { id: string; bank_account_id: string; filename: string; rows_total: number; rows_imported: number; rows_duplicate: number; rows_error: number; created_by_name: string | null; created_at: string };
+export type BankTransaction = {
+  id: string; bank_account: { id: string; name: string }; import_id: string; txn_date: string; amount: string; currency: string; description: string | null; reference: string | null;
+  counterparty_name: string | null; counterparty_tin: string | null; counterparty: { id: string; name: string } | null; status: "UNMATCHED" | "MATCHED" | "IGNORED";
+  matched_amount?: string; remaining?: string;
+};
+
+// ---------------- сверка (срез 6.2) ----------------
+export type MatchReason = { code: string; params: Record<string, string> };
+export type DocBrief = { id: string; number: string | null; doc_type: string; doc_date: string | null; counterparty_name: string | null; total: string; remaining: string };
+export type TxnBrief = { id: string; txn_date: string; amount: string; currency: string; description: string | null; counterparty_name: string | null; remaining: string; bank_account_name: string };
+export type DocCandidate = { document: DocBrief; score: number; reasons: MatchReason[]; suggested_amount: string };
+export type TxnCandidate = { transaction: TxnBrief; score: number; reasons: MatchReason[]; suggested_amount: string };
+export type BankMatch = {
+  id: string; transaction_id: string; document_id: string; document_number: string | null; document_type: string; txn_date: string; amount: string; currency: string;
+  status: string; note: string | null; reasons: MatchReason[]; created_by_name: string | null; created_at: string; cancelled_at: string | null;
+};
+export type BankTransactionDetail = BankTransaction & { matched_amount: string; remaining: string; matches: BankMatch[]; candidates: DocCandidate[] };
+export type DocumentBank = { document_id: string; currency: string | null; total: string | null; matched_total: string; remaining: string | null; matches: BankMatch[]; candidates: TxnCandidate[] };

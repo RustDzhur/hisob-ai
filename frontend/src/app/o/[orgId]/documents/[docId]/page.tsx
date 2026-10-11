@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EntityPicker } from "@/components/EntityPicker";
+import { DocumentBankPanel } from "@/components/DocumentBankPanel";
 import { DocumentJournalPanel } from "@/components/DocumentJournalPanel";
 import { DocumentStockPanel } from "@/components/DocumentStockPanel";
 import { ExtractionPanel, type Suggestion } from "@/components/ExtractionPanel";
@@ -76,6 +77,8 @@ export default function DocumentPage() {
   const canStockRead = !!org?.permissions.includes("stock.read");
   const canAccRead = !!org?.permissions.includes("accounting.read");
   const canAccPost = !!org?.permissions.includes("accounting.post");
+  const canBankRead = !!org?.permissions.includes("bank.read");
+  const canBankReconcile = !!org?.permissions.includes("bank.reconcile");
   const canStockManage = !!org?.permissions.includes("stock.manage");
 
   const [doc, setDoc] = useState<DocumentFull | null>(null);
@@ -342,6 +345,8 @@ export default function DocumentPage() {
           </section>
 
           <DocumentJournalPanel orgId={orgId} docId={doc.id} approved={doc.status === "APPROVED"} canRead={canAccRead} canPost={canAccPost} />
+
+          <DocumentBankPanel orgId={orgId} docId={doc.id} approved={doc.status === "APPROVED"} canRead={canBankRead} canReconcile={canBankReconcile} />
 
           <DocumentStockPanel orgId={orgId} docId={doc.id} approved={doc.status === "APPROVED"} canRead={canStockRead} canManage={canStockManage} />
 

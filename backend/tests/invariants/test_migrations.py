@@ -44,6 +44,7 @@ def test_seeded_roles_and_permissions(admin_engine: Engine) -> None:
         }
         assert auditor == {
             "accounting.read",
+            "bank.read",
             "org.read",
             "members.read",
             "audit.read",

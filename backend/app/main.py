@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.modules.accounting.router import router as accounting_router
+from app.modules.bank.router import router as bank_router
 from app.modules.catalog.counterparties_router import router as counterparties_router
 from app.modules.catalog.products_router import router as products_router
 from app.modules.catalog.router import currencies_router
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     api.include_router(stock_extra_router)
     api.include_router(documents_router)
     api.include_router(accounting_router)
+    api.include_router(bank_router)
     api.include_router(invitations_router)
     api.include_router(roles_router)
     app.include_router(api)
