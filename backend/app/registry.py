@@ -8,6 +8,7 @@ from app.modules.accounting import models as _accounting
 from app.modules.audit import models as _audit
 from app.modules.bank import models as _bank
 from app.modules.catalog import models as _catalog
+from app.modules.copilot import models as _copilot
 from app.modules.documents import models as _documents
 from app.modules.identity import models as _identity
 from app.modules.integrations import models as _integrations
@@ -21,6 +22,7 @@ ALL_MODELS = (
     _accounting,
     _audit,
     _catalog,
+    _copilot,
     _documents,
     _identity,
     _inventory,

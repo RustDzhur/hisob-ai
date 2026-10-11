@@ -47,6 +47,8 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
   const canBank = !!current?.permissions.includes("bank.read");
   const integrationsHref = `${home}/integrations`;
   const canIntegrations = !!current?.permissions.includes("integrations.read");
+  const copilotHref = `${home}/copilot`;
+  const canCopilot = !!current?.permissions.includes("copilot.use");
   const canDocuments = !!current?.permissions.includes("documents.read");
   const canCatalog = !!current?.permissions.includes("catalog.read");
   const canWarehouses = !!current?.permissions.includes("warehouses.read");
@@ -74,6 +76,9 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
           ) : null}
           {canAccounting ? (
             <Link href={accountingHref} aria-current={pathname.startsWith(accountingHref) ? "page" : undefined}>{t.accounting.navLabel}</Link>
+          ) : null}
+          {canCopilot ? (
+            <Link href={copilotHref} aria-current={pathname.startsWith(copilotHref) ? "page" : undefined}>{t.copilot.navLabel}</Link>
           ) : null}
           {canIntegrations ? (
             <Link href={integrationsHref} aria-current={pathname.startsWith(integrationsHref) ? "page" : undefined}>{t.integrations.navLabel}</Link>

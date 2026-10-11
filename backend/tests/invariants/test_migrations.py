@@ -2,14 +2,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy import Engine
 
-from app.modules.audit import models as _a  # noqa: F401
-from app.modules.catalog import models as _c  # noqa: F401
-from app.modules.documents import models as _d  # noqa: F401
-from app.modules.identity import models as _i  # noqa: F401
-from app.modules.inventory import models as _inv  # noqa: F401
-from app.modules.rbac import models as _r  # noqa: F401
-from app.modules.tenancy import models as _t  # noqa: F401
-from app.platform import idempotency as _idem  # noqa: F401
+from app import registry  # noqa: F401  (все модели: иначе сравнение зависит от порядка импортов в сессии)
 from app.platform.base import Base
 
 
@@ -49,6 +42,7 @@ def test_seeded_roles_and_permissions(admin_engine: Engine) -> None:
             "members.read",
             "audit.read",
             "catalog.read",
+            "copilot.use",
             "documents.read",
             "integrations.read",
             "stock.read",

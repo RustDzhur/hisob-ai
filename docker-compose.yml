@@ -64,7 +64,7 @@ services:
       OPENAI_MODEL: ${OPENAI_MODEL:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
-    command: ["dramatiq", "app.worker", "--processes", "1", "--threads", "2", "--queues", "extraction"]
+    command: ["dramatiq", "app.worker", "--processes", "1", "--threads", "2", "--queues", "extraction", "copilot"]
     depends_on:
       migrate:
         condition: service_completed_successfully

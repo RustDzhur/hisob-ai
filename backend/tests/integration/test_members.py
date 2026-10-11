@@ -67,6 +67,7 @@ def test_invite_preview_accept_flow(new_client: NewClient, admin_engine: Engine)
         "bank.reconcile",
         "catalog.manage",
         "catalog.read",
+        "copilot.use",
         "documents.approve",
         "documents.read",
         "documents.review",

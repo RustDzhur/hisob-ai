@@ -314,6 +314,61 @@
         "title": "ApproveIn",
         "type": "object"
       },
+      "AskIn": {
+        "properties": {
+          "conversation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "locale": {
+            "default": "ru",
+            "enum": [
+              "ru",
+              "uz",
+              "en"
+            ],
+            "title": "Locale",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "AskIn",
+        "type": "object"
+      },
+      "AskOut": {
+        "properties": {
+          "conversation_id": {
+            "format": "uuid",
+            "title": "Conversation Id",
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/MessageOut"
+          }
+        },
+        "required": [
+          "conversation_id",
+          "message"
+        ],
+        "title": "AskOut",
+        "type": "object"
+      },
       "AuditActor": {
         "properties": {
           "email": {
@@ -949,6 +1004,106 @@
           "new_password"
         ],
         "title": "ChangePasswordIn",
+        "type": "object"
+      },
+      "ConversationDetail": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageOut"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "updated_at",
+          "messages"
+        ],
+        "title": "ConversationDetail",
+        "type": "object"
+      },
+      "ConversationOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "updated_at"
+        ],
+        "title": "ConversationOut",
+        "type": "object"
+      },
+      "CopilotStatus": {
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "mock": {
+            "title": "Mock",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          }
+        },
+        "required": [
+          "configured",
+          "provider",
+          "model",
+          "mock"
+        ],
+        "title": "CopilotStatus",
         "type": "object"
       },
       "CountCreate": {
@@ -3843,6 +3998,99 @@
           "allocations"
         ],
         "title": "MergeCreate",
+        "type": "object"
+      },
+      "MessageOut": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mock": {
+            "default": false,
+            "title": "Mock",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tool_trace": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Tool Trace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "status",
+          "created_at"
+        ],
+        "title": "MessageOut",
         "type": "object"
       },
       "MinLevelIn": {
@@ -13823,6 +14071,202 @@
         "summary": "Unignore Transaction",
         "tags": [
           "bank"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/copilot/ask": {
+      "post": {
+        "operationId": "ask_api_v1_organizations__org_id__copilot_ask_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ask",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/copilot/conversations": {
+      "get": {
+        "operationId": "conversations_api_v1_organizations__org_id__copilot_conversations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationOut"
+                  },
+                  "title": "Response Conversations Api V1 Organizations  Org Id  Copilot Conversations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conversations",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/copilot/conversations/{conversation_id}": {
+      "get": {
+        "operationId": "conversation_api_v1_organizations__org_id__copilot_conversations__conversation_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conversation",
+        "tags": [
+          "copilot"
+        ]
+      }
+    },
+    "/api/v1/organizations/{org_id}/copilot/status": {
+      "get": {
+        "operationId": "status_api_v1_organizations__org_id__copilot_status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopilotStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "copilot"
         ]
       }
     },

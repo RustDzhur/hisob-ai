@@ -401,3 +401,13 @@ export type IntegrationRun = {
   id: string; provider: string; mode: string; request_id: string; status: "SUCCEEDED" | "FAILED"; cursor_before: string | null; cursor_after: string | null;
   records_count: number; error_code: string | null; created_by_name: string | null; created_at: string;
 };
+
+// ---------------- AI-помощник (этап 8) ----------------
+export type CopilotToolTrace = { tool: string; args?: Record<string, unknown>; rows?: number | null; truncated?: boolean; error?: string };
+export type CopilotMessage = {
+  id: string; role: "user" | "assistant"; content: string; status: "DONE" | "PENDING" | "RUNNING" | "FAILED"; tool_trace: CopilotToolTrace[];
+  provider: string | null; model: string | null; mock: boolean; error_code: string | null; created_at: string; completed_at: string | null;
+};
+export type CopilotConversation = { id: string; title: string; updated_at: string };
+export type CopilotConversationDetail = CopilotConversation & { messages: CopilotMessage[] };
+export type CopilotStatus = { configured: boolean; provider: string | null; model: string | null; mock: boolean };

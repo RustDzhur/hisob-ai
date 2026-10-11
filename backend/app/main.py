@@ -10,6 +10,7 @@ from app.modules.catalog.counterparties_router import router as counterparties_r
 from app.modules.catalog.products_router import router as products_router
 from app.modules.catalog.router import currencies_router
 from app.modules.catalog.router import router as catalog_router
+from app.modules.copilot.router import router as copilot_router
 from app.modules.documents.router import router as documents_router
 from app.modules.identity.router import router as auth_router
 from app.modules.integrations.router import router as integrations_router
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     api.include_router(documents_router)
     api.include_router(accounting_router)
     api.include_router(bank_router)
+    api.include_router(copilot_router)
     api.include_router(integrations_router)
     api.include_router(invitations_router)
     api.include_router(roles_router)

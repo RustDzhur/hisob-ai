@@ -12,6 +12,7 @@ from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import CurrentMessage, Middleware
 
 from app import registry  # noqa: F401  (все модели нужны воркеру для внешних ключей)
+from app.modules.copilot import runner as copilot_runner
 from app.modules.documents.extraction import runner
 from app.platform.config import get_settings
 from app.platform.logging import configure_logging
@@ -57,3 +58,8 @@ def extract_document(job_id: str, org_id: str) -> None:
     message = CurrentMessage.get_current_message()
     retries = int(message.options.get("retries", 0)) if message else 0
     runner.run_job(uuid.UUID(job_id), uuid.UUID(org_id), final_attempt=retries >= MAX_RETRIES)
+
+
+@dramatiq.actor(queue_name="copilot", max_retries=0, time_limit=180_000)
+def copilot_answer(message_id: str, org_id: str) -> None:
+    copilot_runner.run_answer(uuid.UUID(message_id), uuid.UUID(org_id))
